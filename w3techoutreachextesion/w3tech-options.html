@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>W3Tech Outreach Ext — Options</title>
+  <style>
+    body { margin: 0; background: #f1f5f9; font: 14px "Segoe UI", system-ui, sans-serif; color: #0f172a; }
+    header { background: #0f172a; color: #fff; padding: 16px 24px; font-size: 17px; font-weight: 600; }
+    main { max-width: 760px; margin: 24px auto; padding: 0 16px 40px; display: flex; flex-direction: column; gap: 16px; }
+    section { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+    h2 { margin: 0; font-size: 15px; }
+    p { margin: 0; color: #64748b; line-height: 1.5; }
+    label { display: flex; flex-direction: column; gap: 5px; font-weight: 600; font-size: 13px; }
+    input, textarea { font: inherit; font-weight: 400; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+    textarea { min-height: 150px; resize: vertical; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .check { flex-direction: row; align-items: center; gap: 8px; font-weight: 500; }
+    code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; }
+    .bar { position: sticky; bottom: 0; display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid #e2e8f0;
+      border-radius: 12px; padding: 12px 20px; }
+    button { font: inherit; font-weight: 600; padding: 9px 16px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; }
+    .primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .danger { color: #b91c1c; border-color: #fecaca; }
+    #msg { color: #15803d; } #msg.err { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <header>🎯 W3Tech Outreach Ext — Options</header>
+  <main>
+    <section>
+      <h2>Google Sheet</h2>
+      <p>Every lead found is copied to the <b>Hunt Leads</b> tab of your W3Tech Google Sheet, and updated when you mark it sent.
+        Use the web-app URL and the <code>DEMO_API_KEY</code> of the Sheet's Apps Script (<code>sheets/DemoApi.gs</code> — deploy its latest version).</p>
+      <label>Apps Script web-app URL <input id="sheetUrl" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      <label>Key (DEMO_API_KEY) <input id="sheetKey" type="password" autocomplete="off"></label>
+      <label class="check"><input type="checkbox" id="sheetSync"> Copy leads to the Sheet automatically</label>
+    </section>
+
+    <section>
+      <h2>Which leads to message</h2>
+      <div class="grid">
+        <label>Minimum score for “Send” <input id="hotScore" type="number" min="0" max="100"></label>
+      </div>
+      <p>Points: no website 40 · only a social page 35 · local business 10 · phone 5 · mobile (WhatsApp) 5 · W3Tech template for the trade 7.
+        A business with no website and a mobile number scores 60–67.</p>
+    </section>
+
+    <section>
+      <h2>WhatsApp message</h2>
+      <p>Placeholders: <code>{name}</code> <code>{city}</code> <code>{in_city}</code> <code>{pitch}</code> (“noticed you don't have a website yet.” etc.)
+        <code>{demo_link}</code> <code>{category}</code>. You can still edit each message before sending.</p>
+      <textarea id="message"></textarea>
+      <label>Website preview for each trade <small style="font-weight:400;color:#64748b">(one per line: <code>trade = template</code> or <code>trade = https://link</code>; <code>other</code> is used when nothing matches).
+        A template gives each lead a preview with their own name, city and phone: dentist, medical, ophthalmology,
+        pediatrics, gynecology, skincare, plasticsurgery, dieting, fatloss.</small>
+        <textarea id="demoLinks" style="min-height:190px"></textarea></label>
+    </section>
+
+    <section>
+      <h2>Speed</h2>
+      <p>A pause between searches and a daily cap keep Bing from blocking you. If Bing shows a CAPTCHA the hunt pauses by itself.</p>
+      <div class="grid">
+        <label>Pause from (s) <input id="delayMin" type="number" min="3" max="300"></label>
+        <label>to (s) <input id="delayMax" type="number" min="3" max="600"></label>
+        <label>Searches per day <input id="dailyLimit" type="number" min="1" max="2000"></label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Stored leads</h2>
+      <p id="count">…</p>
+      <div><button class="danger" id="clear" type="button">Delete all hunt leads from this browser</button></div>
+    </section>
+
+    <div class="bar"><button class="primary" id="save" type="button">Save</button><span id="msg"></span></div>
+  </main>
+  <script src="w3tech-core.js"></script>
+  <script src="w3tech-options.js"></script>
+</body>
+</html>

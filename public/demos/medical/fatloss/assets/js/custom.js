@@ -734,8 +734,7 @@ var ClinicMaster = function () {
 	}
 	
 	var handleSupport = function () {
-		var support = '<script id="DZScript" src="https://dzassets.s3.amazonaws.com/w3-global-2.0.js?token=W-b64a7e2c73e0a7eb9dd8453eb1ef4616"></script>';
-		jQuery('body').append(support);
+		// Theme seller's support/buy widget (external script) disabled on w3tech.co.in.
 	}
 
 	var handleImageTooltip = function(){

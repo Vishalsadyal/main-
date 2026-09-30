@@ -1,0 +1,2165 @@
+# W3TECH AUTOMATED WEBSITE LEAD & DEMO SAAS
+
+## Full Local Python + SQLite Application
+
+You are a senior Python engineer, automation engineer, UI/UX engineer and QA engineer.
+
+Build a complete LOCAL-FIRST lead generation and website-sales automation application for my web-development business, W3Tech.
+
+The purpose of the application is:
+
+FIND BUSINESS LEADS → ANALYZE THEIR ONLINE PRESENCE → SCORE THEM → GENERATE A PERSONALIZED WEBSITE DEMO → GENERATE PERSONALIZED OUTREACH → TRACK EVERYTHING → CONVERT INTERESTED LEADS INTO WEBSITE CLIENTS.
+
+The application must run completely on my Windows computer initially.
+
+Do NOT build unnecessary cloud infrastructure.
+
+==================================================
+
+1. BUSINESS CONTEXT
+   ==================================================
+
+Business:
+W3Tech
+
+Website:
+https://w3tech.co.in
+
+Business service:
+Website design and development.
+
+Main sales strategy:
+
+1. Find businesses.
+2. Determine whether they have a website.
+3. Analyze their existing website if available.
+4. Identify opportunities:
+
+   * no website
+   * outdated website
+   * poor mobile experience
+   * slow website
+   * weak CTA
+   * poor design
+   * missing WhatsApp/contact functionality
+   * obvious technical problems
+5. Score the lead.
+6. Select an appropriate W3Tech website template.
+7. Generate a personalized demo website.
+8. Give the demo a unique URL/slug.
+9. Generate a personalized outreach message.
+10. Allow me to review it.
+11. Send only through configured/approved communication channels.
+12. Track opens, clicks, replies and status where technically/legalistically supported.
+13. Convert interested leads into website projects.
+
+IMPORTANT:
+
+Do NOT design the application around mass unsolicited WhatsApp spam.
+
+WhatsApp functionality must use an official/authorized Business API integration when enabled.
+
+The application must support a MANUAL REVIEW mode by default.
+
+==================================================
+2. TECHNOLOGY REQUIREMENTS
+==========================
+
+Primary language:
+
+Python 3.12+
+
+Backend:
+
+Flask
+
+Database:
+
+SQLite
+
+ORM:
+
+SQLAlchemy
+
+Frontend:
+
+Jinja2 templates
+HTML5
+CSS3
+Vanilla JavaScript
+
+Do NOT use React unless absolutely necessary.
+
+Do NOT use Node.js for the core application.
+
+Local server:
+
+http://127.0.0.1:5000
+
+Configuration:
+
+.env
+
+Environment management:
+
+python-dotenv
+
+HTTP:
+
+requests
+
+HTML parsing:
+
+BeautifulSoup4
+
+Website browser analysis:
+
+Playwright
+
+Background tasks:
+
+Use APScheduler or a simple Python scheduler.
+
+Logging:
+
+Python logging module.
+
+Testing:
+
+pytest
+
+HTTP/API testing:
+
+Flask test client
+
+Browser testing:
+
+Playwright
+
+==================================================
+3. EXISTING GITHUB PROJECTS TO INSPECT
+======================================
+
+Before writing the application, inspect these repositories for reusable ideas/components.
+
+LeadPipeline:
+
+https://github.com/AI-Invention/lead-pipeline
+
+This is especially relevant because its workflow is:
+
+Scrape → Pitch → Demo → Close.
+
+Inspect:
+
+* scraper architecture
+* lead fields
+* outreach architecture
+* demo architecture
+* reply tracking
+* configuration approach
+
+WhatsApp CRM:
+
+https://github.com/makstudio/WhatsApp-crm
+
+Inspect:
+
+* CRM concepts
+* contacts
+* tags
+* pipelines
+* campaign concepts
+* WhatsApp integration structure
+* automation concepts
+
+AI Sales Closer:
+
+https://github.com/Akshaytanwar/ai-sales-closer
+
+Inspect:
+
+* lead scoring
+* campaign management
+* follow-up architecture
+* workspace concepts
+* AI message generation
+* CRM structure
+
+AI WhatsApp Sales Agent:
+
+https://github.com/sial-sanwal/ai-whatsapp-sales-agent
+
+Inspect:
+
+* SQLite structure
+* lead scoring
+* API design
+* validation
+* message generation
+* testing patterns
+
+IMPORTANT LICENSE RULE:
+
+Before reusing any code, inspect its LICENSE.
+
+Do not copy code whose license is incompatible with this project's intended use.
+
+Prefer implementing equivalent functionality yourself after studying the architecture.
+
+Maintain attribution/license notices where required.
+
+==================================================
+4. APPLICATION NAME
+===================
+
+Internal name:
+
+W3Tech Lead Engine
+
+Display name:
+
+W3Tech Sales Engine
+
+==================================================
+5. DIRECTORY STRUCTURE
+======================
+
+Create:
+
+w3tech_lead_engine/
+
+```
+app.py
+
+config.py
+
+requirements.txt
+
+.env.example
+
+README.md
+
+run.py
+
+pytest.ini
+
+.gitignore
+
+database/
+
+    __init__.py
+    models.py
+    database.py
+    seed.py
+
+routes/
+
+    __init__.py
+    dashboard.py
+    leads.py
+    demos.py
+    campaigns.py
+    settings.py
+    api.py
+
+services/
+
+    lead_finder.py
+    website_analyzer.py
+    lead_scorer.py
+    demo_generator.py
+    message_generator.py
+    campaign_service.py
+    tracking_service.py
+    scheduler.py
+    email_service.py
+    whatsapp_service.py
+
+templates/
+
+    base.html
+
+    dashboard.html
+
+    leads/
+        index.html
+        detail.html
+        edit.html
+
+    demos/
+        index.html
+        preview.html
+        builder.html
+
+    campaigns/
+        index.html
+        create.html
+        detail.html
+
+    settings/
+        index.html
+
+static/
+
+    css/
+        app.css
+
+    js/
+        app.js
+        leads.js
+        demos.js
+        campaigns.js
+
+website_templates/
+
+    dental/
+    restaurant/
+    salon/
+    gym/
+    real_estate/
+    professional/
+    local_business/
+    generic/
+
+demos_generated/
+
+data/
+
+    w3tech.db
+
+tests/
+
+    test_database.py
+    test_leads.py
+    test_scoring.py
+    test_analyzer.py
+    test_demo_generator.py
+    test_messages.py
+    test_campaigns.py
+    test_api.py
+```
+
+==================================================
+6. DATABASE
+===========
+
+Use SQLite.
+
+Database:
+
+data/w3tech.db
+
+Create these models.
+
+---
+
+## Lead
+
+id
+business_name
+category
+phone
+email
+website
+address
+city
+state
+country
+google_maps_url
+source
+logo_url
+
+website_status
+
+Possible values:
+
+no_website
+active
+broken
+unknown
+
+website_score
+
+mobile_score
+
+performance_score
+
+design_score
+
+overall_score
+
+lead_temperature
+
+cold
+warm
+hot
+
+lead_status
+
+new
+analyzing
+qualified
+demo_generated
+contacted
+opened
+replied
+interested
+proposal_sent
+won
+lost
+not_interested
+
+notes
+
+created_at
+updated_at
+
+---
+
+## WebsiteAnalysis
+
+id
+lead_id
+
+url
+
+http_status
+
+ssl_enabled
+
+mobile_friendly
+
+page_title
+
+meta_description_exists
+
+viewport_exists
+
+contact_form_exists
+
+whatsapp_button_exists
+
+phone_visible
+
+email_visible
+
+social_links_exists
+
+page_speed_score
+
+performance_score
+
+accessibility_score
+
+best_practices_score
+
+seo_score
+
+design_score
+
+issues_json
+
+recommendations_json
+
+created_at
+
+---
+
+## Demo
+
+id
+
+lead_id
+
+template_name
+
+slug
+
+business_name
+
+logo_url
+
+primary_color
+
+secondary_color
+
+headline
+
+description
+
+services_json
+
+contact_phone
+
+contact_email
+
+address
+
+demo_path
+
+demo_url
+
+status
+
+draft
+published
+archived
+
+created_at
+
+updated_at
+
+---
+
+## Campaign
+
+id
+
+name
+
+channel
+
+email
+whatsapp
+manual
+
+status
+
+draft
+review
+running
+paused
+completed
+
+message_template
+
+created_at
+updated_at
+
+---
+
+## CampaignLead
+
+id
+
+campaign_id
+lead_id
+
+status
+
+queued
+approved
+sent
+delivered
+opened
+replied
+failed
+skipped
+
+sent_at
+opened_at
+replied_at
+
+---
+
+## Message
+
+id
+
+lead_id
+campaign_id
+
+channel
+
+recipient
+
+subject
+
+message
+
+status
+
+draft
+approved
+sent
+failed
+
+provider_message_id
+
+created_at
+sent_at
+
+---
+
+## Settings
+
+id
+
+business_name
+website
+logo
+email
+phone
+
+default_template
+
+default_message
+
+demo_domain
+
+timezone
+
+manual_review_enabled
+
+==================================================
+7. DASHBOARD
+============
+
+Create a professional dashboard.
+
+Dashboard cards:
+
+TOTAL LEADS
+QUALIFIED
+DEMOS GENERATED
+CONTACTED
+REPLIED
+INTERESTED
+PROPOSALS
+WON
+ESTIMATED PIPELINE VALUE
+
+Charts:
+
+Leads by day
+
+Lead source
+
+Lead category
+
+Lead temperature
+
+Campaign performance
+
+Demo views
+
+Conversion funnel
+
+Funnel:
+
+Found
+↓
+Qualified
+↓
+Demo Generated
+↓
+Contacted
+↓
+Opened
+↓
+Replied
+↓
+Interested
+↓
+Proposal
+↓
+Won
+
+==================================================
+8. LEAD FINDER
+==============
+
+Build a modular lead finder.
+
+DO NOT hard-code one provider.
+
+Create an interface:
+
+LeadProvider
+
+Methods:
+
+search()
+normalize()
+deduplicate()
+
+Implement:
+
+CSVProvider
+
+ManualProvider
+
+MockProvider
+
+Optional external provider adapter.
+
+For external lead discovery, use legitimate APIs/providers where available.
+
+Do not rely on scraping that violates a site's terms.
+
+Lead finder inputs:
+
+keyword
+
+city
+
+state
+
+country
+
+limit
+
+Example:
+
+keyword:
+dentist
+
+city:
+Ludhiana
+
+limit:
+50
+
+Output:
+
+business name
+category
+phone
+website
+address
+city
+source
+
+Deduplicate using:
+
+normalized business name
+phone
+domain
+
+==================================================
+9. MOCK LEAD GENERATOR
+======================
+
+Create a development mode that does NOT require external APIs.
+
+Command:
+
+python run.py --seed-demo-data
+
+Generate at least 50 realistic fictional businesses.
+
+Examples:
+
+Dental clinics
+Restaurants
+Salons
+Gyms
+Real estate agencies
+Local consultants
+Repair shops
+Hotels
+Coaching centers
+
+Clearly mark seeded data as TEST DATA.
+
+This must allow the entire application to be tested without external API keys.
+
+==================================================
+10. WEBSITE ANALYZER
+====================
+
+Analyze a lead's website.
+
+Input:
+
+URL
+
+Check:
+
+HTTP status
+HTTPS
+title
+meta description
+viewport
+mobile layout
+contact form
+phone
+email
+WhatsApp link
+social links
+images
+basic SEO
+performance indicators
+page size
+number of resources
+obvious errors
+
+Use Playwright where browser rendering is required.
+
+Do NOT pretend that a local heuristic is Google's PageSpeed score.
+
+If PageSpeed API is not configured:
+
+label results:
+
+LOCAL ANALYSIS
+
+If PageSpeed API is configured:
+
+label results:
+
+PAGESPEED INSIGHTS
+
+Store all analysis results.
+
+==================================================
+11. LEAD SCORING
+================
+
+Create transparent scoring.
+
+Example:
+
+No website:
++40
+
+Broken website:
++35
+
+Poor mobile:
++25
+
+Slow performance:
++20
+
+Weak design:
++15
+
+No clear CTA:
++10
+
+No WhatsApp/contact CTA:
++5
+
+Good existing website:
+-30
+
+Maximum:
+
+100
+
+Do NOT use hidden AI scoring.
+
+Show the user why each lead received its score.
+
+Example:
+
+Score: 82
+
+Reasons:
+
++40 No website
++20 No mobile presence
++15 Weak CTA
++7 Local business match
+
+Temperature:
+
+0–39 = Cold
+40–69 = Warm
+70–100 = Hot
+
+Make thresholds configurable.
+
+==================================================
+12. TEMPLATE SYSTEM
+===================
+
+This is one of the most important parts.
+
+I already have website templates hosted/available through W3Tech.
+
+Design the template system so templates can be added without changing Python code.
+
+Each template should contain:
+
+index.html
+style.css
+assets/
+template.json
+
+template.json:
+
+{
+"name": "Dental Modern",
+"category": "dental",
+"version": "1.0",
+"fields": [
+"business_name",
+"headline",
+"description",
+"services",
+"phone",
+"email",
+"address",
+"logo",
+"primary_color",
+"secondary_color"
+]
+}
+
+==================================================
+13. PERSONALIZED DEMO GENERATOR
+===============================
+
+Given:
+
+Lead + selected template
+
+Generate:
+
+/demos_generated/<slug>/
+
+Example:
+
+/demos_generated/sharma-dental-clinic/
+
+Generate:
+
+index.html
+
+Use the business's information.
+
+Example:
+
+Business:
+
+Sharma Dental Clinic
+
+Generated headline:
+
+Modern Dental Care for Your Family
+
+Services:
+
+Dental Checkups
+Teeth Cleaning
+Root Canal
+Cosmetic Dentistry
+
+Contact:
+
+Phone
+Address
+WhatsApp
+
+IMPORTANT:
+
+Never invent sensitive business claims.
+
+If information is unavailable:
+
+use safe placeholder text or generic copy.
+
+Do not fabricate awards, doctors, certifications, reviews, years of experience, patient counts, etc.
+
+==================================================
+14. DEMO URL
+============
+
+Create unique URLs.
+
+Local:
+
+http://127.0.0.1:5000/demo/sharma-dental-clinic
+
+Production-ready configuration:
+
+https://w3tech.co.in/demo/sharma-dental-clinic
+
+Make DEMO_BASE_URL configurable.
+
+Example:
+
+DEMO_BASE_URL=https://w3tech.co.in/demo
+
+The generated demo must use the lead's branding while clearly remaining a demo/proposal unless the user chooses to publish it as a real client website.
+
+==================================================
+15. DEMO PREVIEW
+================
+
+Admin dashboard must have:
+
+Preview
+
+Edit
+
+Regenerate
+
+Publish
+
+Archive
+
+Copy URL
+
+Open Demo
+
+Buttons.
+
+Allow manual editing before publishing.
+
+==================================================
+16. MESSAGE GENERATOR
+=====================
+
+Generate personalized outreach.
+
+Do NOT produce spammy generic text.
+
+Message should mention a real observation when possible.
+
+Example:
+
+Hi Sharma Dental Clinic,
+
+I came across your business and noticed that your current online presence could be improved for mobile visitors.
+
+I created a quick website concept for Sharma Dental Clinic:
+
+{{DEMO_URL}}
+
+It is only a demo concept. If you like the direction, I can customize it with your actual content, branding and requirements.
+
+Would you like me to send you the pricing?
+
+Messages must be editable before sending.
+
+==================================================
+17. AI MESSAGE GENERATION
+=========================
+
+Create an optional AI provider abstraction.
+
+Support:
+
+OpenAI-compatible API
+
+Gemini
+
+Local/manual mode
+
+Do not make AI mandatory.
+
+If no API key exists:
+
+use deterministic template-based message generation.
+
+AI prompt must receive:
+
+business name
+category
+city
+website status
+website analysis
+lead score
+demo URL
+W3Tech service information
+
+AI must return:
+
+subject
+
+message
+
+reason_for_contact
+
+Do not hallucinate facts.
+
+==================================================
+18. OUTREACH
+============
+
+Implement channels as adapters.
+
+Email:
+
+SMTP adapter.
+
+WhatsApp:
+
+official WhatsApp Business/Cloud API adapter.
+
+Manual:
+
+Copy message button.
+
+IMPORTANT:
+
+Default:
+
+MANUAL REVIEW REQUIRED
+
+Before sending:
+
+show:
+
+Lead
+Channel
+Recipient
+Message
+Demo URL
+
+Buttons:
+
+Approve & Send
+Edit
+Skip
+
+Do not automatically send large unsolicited campaigns.
+
+Add rate limits.
+
+Add opt-out handling.
+
+==================================================
+19. WHATSAPP SERVICE
+====================
+
+Create:
+
+services/whatsapp_service.py
+
+Interface:
+
+send_message()
+send_template()
+validate_recipient()
+
+Use official API credentials from .env.
+
+Do NOT automate a personal WhatsApp Web account as the production mechanism.
+
+Create MockWhatsAppService for testing.
+
+Mock service should write:
+
+[MOCK WHATSAPP]
+
+to the console/database.
+
+==================================================
+20. EMAIL SERVICE
+=================
+
+Create:
+
+services/email_service.py
+
+Support SMTP.
+
+Create MockEmailService.
+
+Mock mode must not send real email.
+
+==================================================
+21. CAMPAIGNS
+=============
+
+Create campaign builder.
+
+Fields:
+
+Campaign name
+
+Channel
+
+Target category
+
+Minimum score
+
+Location
+
+Lead status
+
+Template
+
+Message
+
+Daily limit
+
+Manual approval
+
+Campaign status
+
+Before running:
+
+show a confirmation screen.
+
+Default:
+
+manual approval ON
+
+==================================================
+22. FOLLOW-UP SYSTEM
+====================
+
+Create follow-up sequences.
+
+Example:
+
+Day 0:
+Initial message
+
+Day 3:
+Friendly follow-up
+
+Day 7:
+Final follow-up
+
+STOP FOLLOW-UP IF:
+
+lead replies
+
+lead says no
+
+lead opts out
+
+lead becomes won
+
+lead is manually paused
+
+Do not implement aggressive messaging.
+
+==================================================
+23. DEMO TRACKING
+=================
+
+Demo pages should optionally record:
+
+demo opened
+timestamp
+lead ID
+page viewed
+CTA clicked
+
+Do not collect unnecessary personal information.
+
+Dashboard:
+
+Demo views
+CTA clicks
+Conversion
+
+==================================================
+24. ADMIN LEAD PAGE
+===================
+
+Lead detail screen:
+
+Business information
+
+Website
+
+Analysis
+
+Score
+
+Reasons
+
+Demo
+
+Messages
+
+Campaigns
+
+Timeline
+
+Notes
+
+Actions:
+
+Analyze website
+
+Generate score
+
+Generate demo
+
+Generate message
+
+Approve message
+
+Mark contacted
+
+Mark replied
+
+Mark interested
+
+Create proposal
+
+Mark won
+
+Mark lost
+
+==================================================
+25. SEARCH AND FILTER
+=====================
+
+Dashboard filters:
+
+Category
+
+City
+
+Score
+
+Temperature
+
+Website status
+
+Lead status
+
+Source
+
+Date
+
+Demo status
+
+Campaign
+
+==================================================
+26. IMPORT/EXPORT
+=================
+
+CSV import.
+
+CSV export.
+
+Fields:
+
+business_name
+category
+phone
+email
+website
+address
+city
+state
+country
+
+Provide duplicate detection.
+
+==================================================
+27. API
+=======
+
+Create internal JSON API.
+
+Endpoints:
+
+GET /api/leads
+
+POST /api/leads
+
+GET /api/leads/<id>
+
+PUT /api/leads/<id>
+
+DELETE /api/leads/<id>
+
+POST /api/leads/<id>/analyze
+
+POST /api/leads/<id>/score
+
+POST /api/leads/<id>/demo
+
+POST /api/leads/<id>/message
+
+GET /api/demos
+
+POST /api/campaigns
+
+POST /api/campaigns/<id>/start
+
+POST /api/campaigns/<id>/pause
+
+==================================================
+28. SECURITY
+============
+
+Never store API keys in source code.
+
+Use .env.
+
+.gitignore must contain:
+
+.env
+*.db
+**pycache**/
+.venv/
+venv/
+demos_generated/
+logs/
+
+Validate URLs.
+
+Validate email addresses.
+
+Validate phone numbers.
+
+Escape HTML output.
+
+Prevent path traversal in demo slugs.
+
+Do not execute arbitrary uploaded code.
+
+==================================================
+29. LOGGING
+===========
+
+Create:
+
+logs/app.log
+
+Log:
+
+lead discovery
+analysis
+demo generation
+message generation
+campaign events
+errors
+
+Do not log:
+
+API secrets
+passwords
+tokens
+private credentials
+
+==================================================
+30. TESTING REQUIREMENTS
+========================
+
+This project is NOT complete until tests pass.
+
+Use pytest.
+
+Minimum tests:
+
+---
+
+## Database tests
+
+Create database.
+
+Create lead.
+
+Update lead.
+
+Delete lead.
+
+Duplicate lead detection.
+
+---
+
+## Lead scoring tests
+
+Test:
+
+No website = high score.
+
+Good website = lower score.
+
+Poor mobile = score increase.
+
+Multiple problems combine correctly.
+
+Score never exceeds 100.
+
+---
+
+## Website analyzer tests
+
+Use local test HTML fixtures.
+
+Test:
+
+title detection
+
+meta detection
+
+viewport detection
+
+phone detection
+
+email detection
+
+WhatsApp detection
+
+HTTPS detection
+
+missing website
+
+invalid URL
+
+timeout
+
+HTTP error
+
+---
+
+## Demo tests
+
+Generate dental demo.
+
+Generate restaurant demo.
+
+Generate salon demo.
+
+Verify:
+
+business name appears
+
+phone appears
+
+services appear
+
+slug is safe
+
+no sensitive fabricated information
+
+duplicate slug handled
+
+---
+
+## Message tests
+
+Generate message.
+
+Verify:
+
+business name included
+
+demo URL included
+
+no hallucinated claims
+
+message is editable
+
+---
+
+## Campaign tests
+
+Create campaign.
+
+Add lead.
+
+Queue lead.
+
+Approve.
+
+Mock send.
+
+Mark sent.
+
+Stop follow-up after reply.
+
+Stop follow-up after opt-out.
+
+---
+
+## API tests
+
+Test every endpoint.
+
+---
+
+## Security tests
+
+Path traversal attempt.
+
+Invalid URL.
+
+Invalid email.
+
+XSS attempt.
+
+SQL injection-like input.
+
+Unauthorized endpoint behavior if authentication is enabled.
+
+==================================================
+31. END-TO-END TEST
+===================
+
+Create an automated test called:
+
+test_full_sales_flow()
+
+Flow:
+
+1. Create test business.
+
+Business:
+
+Sunrise Dental Clinic
+
+Category:
+
+Dental
+
+City:
+
+Ludhiana
+
+Website:
+
+http://127.0.0.1:<test_port>/fixtures/dental.html
+
+2. Analyze website.
+
+3. Calculate score.
+
+4. Generate demo.
+
+5. Verify demo exists.
+
+6. Generate personalized message.
+
+7. Create campaign.
+
+8. Queue lead.
+
+9. Approve message.
+
+10. Send through MockEmailService.
+
+11. Verify database message status.
+
+12. Open demo using Playwright.
+
+13. Verify business name.
+
+14. Click CTA.
+
+15. Verify tracking event.
+
+16. Simulate reply.
+
+17. Verify lead becomes:
+
+replied
+
+18. Verify follow-up is cancelled.
+
+This test must run without external services.
+
+==================================================
+32. TEST DATA
+=============
+
+Create fixtures:
+
+dental.html
+restaurant.html
+salon.html
+bad-mobile.html
+slow-page.html
+no-contact.html
+broken.html
+
+Create at least:
+
+50 mock leads.
+
+Mix:
+
+10 no website
+10 poor websites
+10 average websites
+10 good websites
+10 broken/invalid examples
+
+==================================================
+33. CLI
+=======
+
+Create CLI commands:
+
+python run.py
+
+python run.py --init-db
+
+python run.py --seed-demo-data
+
+python run.py --test
+
+python run.py --generate-demo <lead_id>
+
+python run.py --analyze <lead_id>
+
+python run.py --export leads.csv
+
+==================================================
+34. INSTALLATION
+================
+
+requirements.txt should contain only necessary dependencies.
+
+README must provide:
+
+Windows installation.
+
+PowerShell commands.
+
+Virtual environment.
+
+Installation.
+
+Database initialization.
+
+Seed data.
+
+Run application.
+
+Run tests.
+
+Configure .env.
+
+Optional API setup.
+
+Optional AI setup.
+
+Optional email setup.
+
+Optional WhatsApp setup.
+
+==================================================
+35. WINDOWS SETUP
+=================
+
+README must work on:
+
+Windows 10/11
+
+Example:
+
+python -m venv .venv
+
+.venv\Scripts\activate
+
+pip install -r requirements.txt
+
+python run.py --init-db
+
+python run.py --seed-demo-data
+
+python run.py
+
+Then:
+
+http://127.0.0.1:5000
+
+==================================================
+36. UI DESIGN
+=============
+
+Design should look like a professional modern SaaS dashboard.
+
+Sidebar:
+
+Dashboard
+Leads
+Demos
+Campaigns
+Messages
+Analytics
+Settings
+
+Use:
+
+cards
+
+tables
+
+badges
+
+status indicators
+
+filters
+
+modal dialogs
+
+responsive layout
+
+Do not use an ugly default Flask interface.
+
+==================================================
+37. BRANDING
+============
+
+Brand:
+
+W3Tech
+
+Primary site:
+
+https://w3tech.co.in
+
+Use a clean technology/business design.
+
+Settings must allow:
+
+logo
+
+company name
+
+email
+
+phone
+
+website
+
+primary color
+
+secondary color
+
+demo domain
+
+==================================================
+38. WHITE-LABEL DEMOS
+=====================
+
+Important distinction:
+
+The CLIENT DEMO should be branded as the client's business.
+
+The ADMIN PLATFORM should remain W3Tech branded initially.
+
+Example:
+
+Admin:
+
+W3Tech Sales Engine
+
+Demo:
+
+ABC Restaurant
+
+ABC Restaurant logo
+
+ABC Restaurant colors
+
+ABC Restaurant services
+
+ABC Restaurant contact information
+
+No unnecessary W3Tech branding inside the client's demo.
+
+==================================================
+39. NO FAKE INFORMATION
+=======================
+
+The system must NEVER invent:
+
+reviews
+
+ratings
+
+certifications
+
+awards
+
+doctor names
+
+employee names
+
+years in business
+
+customer counts
+
+revenue
+
+guarantees
+
+fake testimonials
+
+If information isn't available:
+
+omit it or use neutral placeholder copy.
+
+==================================================
+40. PROVIDER ABSTRACTION
+========================
+
+Every external dependency must have an interface.
+
+Lead:
+
+LeadProvider
+
+AI:
+
+AIProvider
+
+Email:
+
+EmailProvider
+
+WhatsApp:
+
+WhatsAppProvider
+
+Website analysis:
+
+WebsiteAnalyzer
+
+This allows Mock providers for local development.
+
+==================================================
+41. OFFLINE-FIRST MODE
+======================
+
+The entire application must run without:
+
+OpenAI
+
+Gemini
+
+WhatsApp
+
+SMTP
+
+Google Maps
+
+Apify
+
+external APIs
+
+In offline mode:
+
+Use mock leads.
+
+Use local HTML.
+
+Use template messages.
+
+Use MockEmailService.
+
+Use MockWhatsAppService.
+
+Use SQLite.
+
+The application must still be fully testable.
+
+==================================================
+42. DEVELOPMENT PHASES
+======================
+
+Do not attempt everything in one giant implementation.
+
+Build in phases.
+
+PHASE 1:
+
+Flask
+
+SQLite
+
+Database
+
+Models
+
+Dashboard
+
+Lead CRUD
+
+Tests
+
+PHASE 2:
+
+Mock lead provider
+
+CSV import
+
+Website analyzer
+
+Lead scoring
+
+Tests
+
+PHASE 3:
+
+Template engine
+
+Personalized demo generator
+
+Demo routes
+
+Demo tracking
+
+Tests
+
+PHASE 4:
+
+Message generation
+
+Campaigns
+
+Mock email
+
+Mock WhatsApp
+
+Tests
+
+PHASE 5:
+
+Real providers
+
+AI
+
+Email SMTP
+
+Official WhatsApp Business API
+
+Optional external lead provider
+
+PHASE 6:
+
+Production preparation
+
+Security
+
+Rate limiting
+
+Authentication
+
+Backups
+
+Deployment configuration
+
+==================================================
+43. IMPORTANT DEVELOPMENT RULE
+==============================
+
+Do NOT hide errors.
+
+If a feature cannot be implemented because an API requires credentials:
+
+implement the interface and mock provider.
+
+Display:
+
+"Provider not configured — running in demo mode."
+
+Do not fake successful real-world API responses.
+
+==================================================
+44. ACCEPTANCE CRITERIA
+=======================
+
+The project is complete only when:
+
+[ ] Application starts locally.
+
+[ ] SQLite database initializes.
+
+[ ] Dashboard works.
+
+[ ] Leads can be created.
+
+[ ] Leads can be imported.
+
+[ ] Leads can be searched.
+
+[ ] Websites can be analyzed.
+
+[ ] Leads can be scored.
+
+[ ] Score reasons are visible.
+
+[ ] Templates can be selected.
+
+[ ] Personalized demos can be generated.
+
+[ ] Unique demo URLs work.
+
+[ ] Demo pages render correctly.
+
+[ ] Demo tracking works.
+
+[ ] Personalized messages can be generated.
+
+[ ] Messages can be edited.
+
+[ ] Campaigns can be created.
+
+[ ] Manual approval works.
+
+[ ] Mock sending works.
+
+[ ] Follow-up logic works.
+
+[ ] Reply stops follow-up.
+
+[ ] Opt-out stops follow-up.
+
+[ ] CSV export works.
+
+[ ] API works.
+
+[ ] Security tests pass.
+
+[ ] End-to-end test passes.
+
+[ ] README works on Windows.
+
+[ ] No API keys are hard-coded.
+
+[ ] No fake successful external API responses.
+
+[ ] All tests pass.
+
+==================================================
+45. FINAL COMMANDS
+==================
+
+The final project should work with:
+
+python run.py --init-db
+
+python run.py --seed-demo-data
+
+python run.py
+
+and:
+
+pytest -q
+
+The final output must tell me:
+
+1. What files were created.
+2. What GitHub projects were inspected.
+3. What code was actually reused, if any.
+4. License information for reused code.
+5. Installation commands.
+6. Environment variables.
+7. How to run.
+8. How to run tests.
+9. Which features are real.
+10. Which features are mock/demo-only.
+11. What API credentials are required for real integrations.
+12. Any remaining limitations.
+
+Do not claim a feature is production-ready unless it has actually been implemented and tested.
+
+START BY CREATING PHASE 1.
+
+After Phase 1 passes all tests, continue to Phase 2.
+
+Do not skip tests.
+Do not create fake placeholder implementations that appear to work.
+Do not ask me unnecessary questions.
+Make reasonable engineering decisions and document them.
