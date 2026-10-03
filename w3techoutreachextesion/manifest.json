@@ -57,7 +57,11 @@
   "host_permissions": [
     "https://*.bing.com/*",
     "https://script.google.com/*",
-    "https://script.googleusercontent.com/*"
+    "https://script.googleusercontent.com/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
+    "https://www.w3tech.co.in/*",
+    "https://w3tech.co.in/*"
   ],
   "oauth2": {
     "client_id": "1045436637864-mp9mgaioa4b3lekvskpcp1f0cae9qcvm.apps.googleusercontent.com",

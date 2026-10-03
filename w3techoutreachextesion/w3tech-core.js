@@ -53,15 +53,32 @@
     delayMin: 8,            // seconds between searches (random between min and max)
     delayMax: 20,
     dailyLimit: 300,        // searches per day
+    dailySend: 50,          // WhatsApp messages per day (today's queue)
+    sendGapMin: 3,          // seconds before the next chat opens (random between min and max)
+    sendGapMax: 6,
     maxPerSearch: 60,
     message: DEFAULT_MESSAGE,
     demoLinks: DEFAULT_DEMO_LINKS,
     sheetUrl: "",           // Apps Script web-app URL (sheets/DemoApi.gs)
     sheetKey: "",           // DEMO_API_KEY
-    sheetSync: true
+    sheetSync: true,
+    // W3Tech leads dashboard(s) that "Push to dashboard" sends to (each only if reachable).
+    dashboardSites: ["http://localhost:3000", "https://www.w3tech.co.in"],
+    dashboardKey: "",       // LEADS_API_KEY of the site
+    price: "",              // your price for a website, used in the pricing message ({price})
+    nextMessages: {}        // your own versions of the follow-up messages (Options); empty = defaults
   };
 
-  const POINTS = { no_website: 40, social_only: 35, local_business: 10, phone: 5, whatsapp: 5, sample_site: 7 };
+  // Lead status as shown in the panel and written to the Google Sheet.
+  const STATUS_LABELS = {
+    new: "New", queued: "In today's queue", waiting_reply: "Sent — waiting for reply", sent: "Sent — waiting for reply",
+    replied: "Replied", interested: "Designs shown", proposal: "Pricing sent", not_interested: "Not interested", won: "Won",
+    skipped: "Skipped", no_whatsapp: "Not on WhatsApp"
+  };
+
+  const POINTS = { no_website: 40, social_only: 35, local_business: 10, phone: 5, whatsapp: 5, sample_site: 7,
+                   established: 10 };
+  const ESTABLISHED = { rating: 4.3, reviews: 25 }; // well rated by enough people
 
   function digits(text) { return String(text || "").replace(/\D/g, ""); }
 
@@ -77,6 +94,27 @@
     const name = String(title || "").normalize("NFKC");
     const short = name.split(/\s?[-–|:]\s|\s*[|/(]/)[0].trim();
     return short || name.trim();
+  }
+
+  // Name to use in messages and previews: at most `max` characters, cut at a whole word,
+  // never ending on a joining word. "Creative Dental Clinic and Implant Centre" -> "Creative Dental Clinic".
+  const JOINERS = /^(and|&|of|the|for|in|at|by|with|-|–|\+|,)$/i;
+  const FILLER = /^(super|specialit?y|specialty|multi|multi-?speciality|multispecialit?y|multispecialty|best|advanced|premium|top|no\.?\s?1|#1)$/i;
+  function shortName(name, max = 30) {
+    const clean = cleanName(name).replace(/\s+/g, " ").trim();
+    if (clean.length <= max) return clean;
+    // Filler words go first: "Sushma Memorial Super Specialty Dental Clinic" -> "Sushma Memorial Dental Clinic".
+    const trimmed = clean.split(" ").filter((w) => !FILLER.test(w)).join(" ");
+    if (trimmed && trimmed.length <= max) return trimmed;
+    const words = (trimmed || clean).split(" ");
+    const kept = [];
+    for (const w of words) {
+      if ((kept.join(" ") + " " + w).trim().length > max) break;
+      kept.push(w);
+    }
+    while (kept.length > 1 && JOINERS.test(kept[kept.length - 1])) kept.pop();
+    const out = kept.join(" ").replace(/[,&+–-]+$/, "").trim();
+    return out || clean.slice(0, max).trim();
   }
 
   function domainOf(url) {
@@ -126,14 +164,29 @@
       if (e.entryName && e.entryName !== "Business") continue; // a town/road/landmark
       seen.add(e.id);
       const p = data.routablePoint || {};
+      const rating = Number(e.ratingValue);
       out.push({
         id: e.id, title, address: (e.address || "").trim(), phone: (e.phone || "").trim(),
         website: (e.website || "").trim(), category: (e.primaryCategoryName || "").trim(),
         lat: p.latitude == null ? null : p.latitude, lon: p.longitude == null ? null : p.longitude,
-        closed: /permanently closed/i.test(e.openHoursText || "")
+        closed: /permanently closed/i.test(e.openHoursText || ""),
+        rating: rating > 0 && rating <= 5 ? rating : null,
+        reviewCount: rating > 0 ? reviewCount(e.ratingCount, data.cardText) : null,
+        ratingSource: rating > 0 ? String(e.ratingSourceName || "").slice(0, 40) : ""
       });
     }
     return out;
+  }
+
+  // Bing gives the count in `ratingCount`, except for some sources (Zomato) where it is "0"
+  // and the real number is only in the card text: "4.6/5 (315 votes)", "4.4/5 (2K Justdial reviews)".
+  function reviewCount(ratingCount, cardText) {
+    const n = parseInt(String(ratingCount || "").replace(/\D/g, ""), 10);
+    if (n > 0) return n;
+    const m = String(cardText || "").match(/\/5\s*\((\d[\d,.]*)\s*(K)?\s+(?:votes|[A-Za-z ]*reviews?)\)/i);
+    if (!m) return 0;
+    const value = parseFloat(m[1].replace(/,/g, ""));
+    return Math.round(m[2] ? value * 1000 : value);
   }
 
   function mapsLink(title, address, lat, lon) {
@@ -159,11 +212,36 @@
       city, state: place.state || step.state, country: hunt.country, countryCode: hunt.countryCode,
       callingCode: hunt.callingCode,
       lat: entity.lat, lon: entity.lon,
+      rating: entity.rating == null ? null : entity.rating,
+      reviewCount: entity.reviewCount || 0,
+      ratingSource: entity.ratingSource || "",
       mapsUrl: mapsLink(entity.title, entity.address, entity.lat, entity.lon),
       hunt: hunt.name, search: `${step.term} in ${step.city}`,
       foundAt: new Date().toISOString(),
       status: "new"          // new -> sent -> replied / interested / won / not_interested
     };
+  }
+
+  // ---------------------------------------------------------------- competitors
+
+  function distanceKm(a, b) {
+    if ([a.lat, a.lon, b.lat, b.lon].some((v) => v == null)) return null;
+    const rad = (d) => (d * Math.PI) / 180;
+    const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 +
+      Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lon - a.lon) / 2) ** 2;
+    return Math.round(12742 * Math.asin(Math.sqrt(h)) * 10) / 10;
+  }
+
+  /** From one search's results (in Bing's order): this business's rank, the top 3 and the 3 nearest others. */
+  function competitorsFor(entity, entities) {
+    // website: the competitor's own site address (social pages don't count), or "" if none.
+    const brief = (e, i) => ({ name: cleanName(e.title), rank: i + 1,
+      website: e.website && !isSocial(e.website) ? String(e.website).slice(0, 300) : "",
+      rating: e.rating == null ? null : e.rating, reviews: e.reviewCount || 0, ratingSource: e.ratingSource || "",
+      km: distanceKm(entity, e) });
+    const others = entities.map(brief).filter((c, i) => entities[i].id !== entity.id);
+    const nearby = others.filter((c) => c.km != null && c.rank > 3).sort((a, b) => a.km - b.km).slice(0, 3);
+    return { rank: entities.findIndex((e) => e.id === entity.id) + 1, top: others.filter((c) => c.rank <= 3), nearby };
   }
 
   function score(lead, settings) {
@@ -177,8 +255,23 @@
     if (lead.phone) add(POINTS.phone, "Phone number listed");
     if (whatsappNumber(lead.phone, lead.callingCode, lead.countryCode)) add(POINTS.whatsapp, "Mobile number (WhatsApp)");
     if ((s.demoLinks || {})[lead.category]) add(POINTS.sample_site, "W3Tech template for this trade");
+    // Established business: well rated by enough people. A 4.9★ from 3 reviews doesn't count.
+    const established = isEstablished(lead);
+    if (established) {
+      add(POINTS.established, `Established: ★${lead.rating} from ${lead.reviewCount.toLocaleString("en-IN")}` +
+        `${lead.ratingSource ? " " + lead.ratingSource : ""} ${/zomato/i.test(lead.ratingSource) ? "votes" : "reviews"}`);
+    }
     const total = Math.max(0, Math.min(100, reasons.reduce((n, r) => n + r.points, 0)));
-    return { score: total, reasons, hot: total >= s.hotScore };
+    return { score: total, reasons, hot: total >= s.hotScore, established, priority: priorityFor(total) };
+  }
+
+  function isEstablished(lead) {
+    return (lead.rating || 0) >= ESTABLISHED.rating && (lead.reviewCount || 0) >= ESTABLISHED.reviews;
+  }
+
+  // Score answers "is this a website-sales opportunity?"; priority ranks the good ones.
+  function priorityFor(total) {
+    return total >= 70 ? "high" : total >= 60 ? "normal" : "low";
   }
 
   // Keys that identify the same business across searches.
@@ -205,12 +298,75 @@
     const old = value.match(/w3tech\.co\.in\/demos\/medical\/([a-z]+)\/?$/);
     if (old) value = old[1];
     if (!TEMPLATES.includes(value)) return value;
-    const params = new URLSearchParams({ n: lead.name });
+    const name = shortName(lead.name);
+    const params = new URLSearchParams({ n: name });
     if (lead.city) params.set("c", lead.city);
     const wa = whatsappNumber(lead.phone, lead.callingCode, lead.countryCode);
     if (wa) params.set("p", wa);
-    const slug = slugify(`${lead.name} ${lead.city || ""}`) || "preview";
+    const slug = slugify(`${name} ${lead.city || ""}`) || "preview";
     return `${PREVIEW_BASE}/for/${value}/${slug}?${params.toString()}`;
+  }
+
+  // ---------------------------------------------------------------- after they reply (Replied tab)
+
+  // The funnel after the first message, in order.
+  const FUNNEL = [
+    ["waiting_reply", "Sent"], ["replied", "Replied"], ["interested", "Designs shown"],
+    ["proposal", "Pricing sent"], ["won", "Won"]
+  ];
+
+  const TEMPLATE_LABELS = {
+    dentist: "Dental clinic", medical: "Clinic / hospital", ophthalmology: "Eye care", pediatrics: "Child care",
+    gynecology: "Women's health", skincare: "Skin clinic", plasticsurgery: "Cosmetic surgery", dieting: "Diet & nutrition",
+    fatloss: "Weight loss"
+  };
+  // Trades that get every medical design (doctor, nurse, clinic…); others only their own, if any.
+  const MEDICAL = ["dental", "clinic", "hospital", "physio", "eye", "child", "women", "skin", "plastic_surgery", "diet"];
+
+  /** Personalised preview links of every design that suits the lead's trade, their own design first. */
+  function designLinks(lead, settings) {
+    const s = settings || {};
+    const own = demoLink(lead, s);
+    const ownTemplate = (own.match(/\/for\/([a-z]+)\//) || [])[1];
+    const pool = MEDICAL.includes(lead.category) ? TEMPLATES : ownTemplate ? [ownTemplate] : [];
+    const ordered = ownTemplate ? [ownTemplate, ...pool.filter((t) => t !== ownTemplate)] : pool;
+    return ordered.map((t) => ({ template: t, label: TEMPLATE_LABELS[t] || t,
+      url: demoLink(lead, Object.assign({}, s, { demoLinks: { [lead.category]: t } })) }));
+  }
+
+  // What to send next. `advance` = the stage the lead moves to once it's sent.
+  const NEXT_MESSAGES = {
+    more_designs: { label: "Wants to see designs", advance: "interested", text:
+      "Thanks for getting back to me, {name}! 😊\n\nHere are a few designs I made with your name on them — tap any to have a look:\n{design_links}\n\n" +
+      "Which style do you like best? I can change the colours, photos and text however you like." },
+    pricing: { label: "Asks the price", advance: "proposal", text:
+      "Hi {name}, happy to share! A complete website like the one you saw — your own name, photos and services, " +
+      "mobile-friendly, WhatsApp and call buttons, Google Maps and basic Google search setup — is {price}.\n\n" +
+      "That includes the domain setup and one round of changes. Shall we get started?" },
+    follow_up: { label: "No answer yet", advance: null, text:
+      "Hi {name}, just checking in — did you get a chance to look at the design and the price?\n" +
+      "Happy to answer any questions, or we can have a quick 5-minute call. 🙂" },
+    not_now: { label: "Not right now", advance: null, text:
+      "No problem at all, {name}! I'll keep your design ready. Whenever you're ready, just message me here. 🙂" },
+    not_interested: { label: "Not interested", advance: "not_interested", text:
+      "Thanks for letting me know, {name}. I won't message again — wishing you all the best! 🙏" },
+    onboarding: { label: "Said yes", advance: "won", text:
+      "Great, {name}! 🎉 To get started, please send me:\n" +
+      "1. Your logo (if you have one)\n2. A few photos of your clinic / work\n3. Your services and timings\n" +
+      "4. Address and the phone number to show\n\nI'll share the first version within 2–3 days." }
+  };
+  // Suggested message for each stage.
+  const STAGE_NEXT = { waiting_reply: "more_designs", replied: "more_designs", interested: "pricing", proposal: "follow_up", won: "onboarding" };
+
+  function fillNext(kind, lead, settings, links) {
+    const s = Object.assign({}, DEFAULT_SETTINGS, settings || {});
+    const own = (s.nextMessages || {})[kind];
+    const template = own || (NEXT_MESSAGES[kind] || NEXT_MESSAGES.follow_up).text;
+    const list = (links || designLinks(lead, s)).map((d) => `• ${d.label}: ${d.url}`).join("\n") || demoLink(lead, s);
+    const values = { name: shortName(lead.name), city: lead.city || "", price: s.price || "[your price]",
+                     category: String(lead.categoryLabel || "business").toLowerCase(), design_links: list,
+                     demo_link: demoLink(lead, s) };
+    return template.replace(/\{(\w+)\}/g, (m, k) => (k in values ? values[k] : m)).trim();
   }
 
   function fillMessage(lead, settings) {
@@ -218,8 +374,9 @@
     const pitch = !lead.website ? "noticed you don't have a website yet."
       : isSocial(lead.website) ? "noticed you only have a social media page, not your own website."
       : "had a look at your website.";
-    const inCity = lead.city && !lead.name.toLowerCase().includes(lead.city.toLowerCase()) ? ` in ${lead.city}` : "";
-    const values = { name: lead.name, city: lead.city || "", in_city: inCity, pitch, demo_link: demoLink(lead, s),
+    const name = shortName(lead.name);
+    const inCity = lead.city && !name.toLowerCase().includes(lead.city.toLowerCase()) ? ` in ${lead.city}` : "";
+    const values = { name, city: lead.city || "", in_city: inCity, pitch, demo_link: demoLink(lead, s),
                      category: lead.categoryLabel || "" };
     return String(s.message || DEFAULT_MESSAGE).replace(/\{(\w+)\}/g, (m, k) => (k in values ? values[k] : m)).trim();
   }
@@ -229,7 +386,8 @@
     return n ? `https://wa.me/${n}${text ? "?text=" + encodeURIComponent(text) : ""}` : null;
   }
 
-  g.W3Core = { DEFAULT_SETTINGS, DEFAULT_MESSAGE, DEFAULT_DEMO_LINKS, TEMPLATES, slugify, POINTS, normalizeCategory, cleanName, domainOf,
+  g.W3Core = { competitorsFor, distanceKm, FUNNEL, NEXT_MESSAGES, STAGE_NEXT, TEMPLATE_LABELS, designLinks, fillNext, STATUS_LABELS, shortName, DEFAULT_SETTINGS, DEFAULT_MESSAGE, DEFAULT_DEMO_LINKS, TEMPLATES, slugify, POINTS, ESTABLISHED,
+    reviewCount, isEstablished, priorityFor, normalizeCategory, cleanName, domainOf,
     isSocial, splitAddress, whatsappNumber, parseEntities, toLead, score, dedupeKeys, demoLink, fillMessage,
     whatsappLink, digits };
 })(typeof self !== "undefined" ? self : this);

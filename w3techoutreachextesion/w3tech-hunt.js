@@ -3,9 +3,8 @@
 //  Hunt tab   asks what to hunt for (country, states, business types, town size), starts
 //             the hunt and shows progress. The tab where you press Start does the hunting:
 //             it moves town to town, reads the result list and hands it to the background.
-//  Send tab   the best leads with their WhatsApp message ready: Open WhatsApp → press send
-//             in WhatsApp → ✓ Sent. Nothing is ever sent without you.
-//  Leads tab  totals, CSV export and Google Sheet sync.
+//  Leads tab  push to the W3Tech leads dashboard (where WhatsApp messages are sent from),
+//             and CSV export. The dashboard backs everything up to the Google Sheet.
 (function () {
   if (window.__w3techHunt) return;
   window.__w3techHunt = true;
@@ -41,10 +40,10 @@
   host.id = "w3tech-hunt-root";
   const root = host.attachShadow({ mode: "open" });
   root.innerHTML = `<style>${CSS()}</style>
-    <button class="launcher" type="button"><span class="dot"></span>W3Tech Hunt<span class="pill" hidden></span></button>
+    <button class="launcher" type="button"><span class="dot"></span>W3Tech Hunt</button>
     <section class="panel" hidden>
       <header><strong>🎯 W3Tech Lead Hunt</strong><button class="x" type="button" aria-label="Close">×</button></header>
-      <nav><button data-tab="hunt">Hunt</button><button data-tab="send">Send <span class="n"></span></button><button data-tab="leads">Leads</button></nav>
+      <nav><button data-tab="hunt">Hunt</button><button data-tab="leads">Leads</button></nav>
       <div class="body"></div>
     </section>`;
   document.documentElement.appendChild(host);
@@ -69,7 +68,6 @@
     root.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
     stopPoll();
     if (tab === "hunt") loadHunt();
-    else if (tab === "send") loadSend();
     else loadLeads();
   }
 
@@ -86,10 +84,6 @@
     const res = await call("status");
     if (!res.ok) return;
     ui.status = res.data;
-    const n = res.data.stats.toSend;
-    const pill = $(".pill");
-    pill.hidden = !n; pill.textContent = n;
-    $("nav .n").textContent = n ? `(${n})` : "";
   }
 
   // ------------------------------------------------------------ Hunt tab
@@ -247,7 +241,7 @@
       ${h.status === "running" && h.isHuntTab ? `<p class="note">This tab is doing the hunt — keep it open. Use another tab or window for other work.</p>` : ""}
       <div class="stats">
         <div><b>${fmt(h.found)}</b><small>found</small></div><div><b>${fmt(h.fresh)}</b><small>new leads</small></div>
-        <div><b>${fmt(h.hot)}</b><small>good leads</small></div><div><b>${fmt(st.toSend)}</b><small>to send</small></div>
+        <div><b>${fmt(h.hot)}</b><small>good leads</small></div><div><b>${fmt(st.total)}</b><small>all leads</small></div>
       </div>
       ${h.recent.length ? `<ul class="recent">${h.recent.map((r) => `<li><span>${esc(r.term)} · ${esc(r.city)}</span>
         <small>${r.failed ? "skipped: " + esc(r.reason) : `${r.found} found · ${r.fresh} new${r.hot ? " · " + r.hot + " good" : ""}`}</small></li>`).join("")}</ul>` : ""}
@@ -257,14 +251,13 @@
         ${h.status === "paused" ? `<button class="btn primary" data-act="resume">Resume in this tab</button>` : ""}
         ${["running", "paused"].includes(h.status) ? `<button class="btn danger" data-act="stop">Stop</button>` : ""}
         <button class="btn newhunt">New hunt</button>
-        ${st.toSend ? `<button class="btn primary gosend">Send ${st.toSend} →</button>` : ""}
+        <button class="btn goleads">Push to dashboard →</button>
       </div>`;
     body.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => control(b.dataset.act)));
     const here = body.querySelector(".here");
     if (here) here.addEventListener("click", () => control("resume"));
     body.querySelector(".newhunt").addEventListener("click", () => { stopPoll(); showForm(); });
-    const gs = body.querySelector(".gosend");
-    if (gs) gs.addEventListener("click", () => showTab("send"));
+    body.querySelector(".goleads").addEventListener("click", () => showTab("leads"));
     if (h.status === "running" && !ui.poll) startPoll(async () => {
       const res = await call("status");
       if (!res.ok || ui.view !== "progress" || ui.tab !== "hunt") return;
@@ -282,48 +275,6 @@
     loadHunt();
   }
 
-  // ------------------------------------------------------------ Send tab
-  async function loadSend() {
-    ui.view = "send";
-    const res = await call("send-list", { limit: 20 });
-    if (!res.ok) return error(res.error);
-    const { leads, total } = res.data;
-    if (!leads.length) {
-      body.innerHTML = `<div class="empty"><p><b>Nothing to send right now.</b></p>
-        <p class="muted">Good leads (with a mobile number) appear here while a hunt runs.</p></div>`;
-      return refreshBadge();
-    }
-    body.innerHTML = `<p class="muted small">${fmt(total)} lead${total === 1 ? "" : "s"} to message, best first. <b>Open WhatsApp</b> fills in the text — check it, press send in WhatsApp, then <b>✓ Sent</b>.</p>
-      <p class="flash" hidden></p>` +
-      leads.map((l, i) => `<article class="lead" data-i="${i}">
-        <div class="lead-head"><b>${esc(l.name)}</b><span class="score">${l.score}</span></div>
-        <p class="muted small">${esc(l.category)} · ${esc(l.city)}${l.state ? ", " + esc(l.state) : ""} · ${esc(l.phone)}
-          · <a href="${esc(l.mapsUrl)}" target="_blank">map ↗</a>${l.website ? ` · <a href="${esc(l.website)}" target="_blank" rel="noreferrer">site ↗</a>` : ""}</p>
-        <p class="small why">${l.reasons.map(esc).join(" · ")}</p>
-        <textarea rows="4">${esc(l.message)}</textarea>
-        <div class="actions"><button class="btn primary wa">Open WhatsApp</button><button class="btn sent">✓ Sent</button>
-          <button class="btn skip">Skip</button></div></article>`).join("");
-    body.querySelectorAll(".lead").forEach((card) => {
-      const lead = leads[Number(card.dataset.i)];
-      const text = () => card.querySelector("textarea").value;
-      card.querySelector(".wa").addEventListener("click", () => {
-        window.open(`https://wa.me/${waDigits(lead)}?text=${encodeURIComponent(text())}`, "_blank", "noopener");
-        card.querySelector(".sent").classList.add("primary");
-      });
-      card.querySelector(".sent").addEventListener("click", () => mark(lead, "sent", text()));
-      card.querySelector(".skip").addEventListener("click", () => mark(lead, "skipped", ""));
-    });
-    refreshBadge();
-  }
-
-  function waDigits(lead) { return (lead.whatsapp || "").replace(/\D/g, ""); }
-
-  async function mark(lead, status, message) {
-    const res = await call("lead", { key: lead.key, status, message });
-    if (!res.ok) return flash(res.error);
-    loadSend();
-  }
-
   // ------------------------------------------------------------ Leads tab
   async function loadLeads() {
     ui.view = "leads";
@@ -336,10 +287,12 @@
         <div><b>${fmt(st.hot)}</b><small>good</small></div><div><b>${fmt(st.sent)}</b><small>messaged</small></div>
       </div>
       <p class="flash" hidden></p>
-      <div class="actions"><button class="btn primary csv">Download CSV</button><button class="btn sync">Save to Google Sheet${st.unsynced ? ` (${fmt(st.unsynced)} waiting)` : ""}</button></div>
-      <p class="muted small">Leads are kept in this browser${st.unsynced ? "" : " and copied to your Google Sheet as they're found"}.
-        The CSV imports straight into the W3Tech Sales Engine (Leads → Import).
-        Sheet, message text, sample-site links and speed: <button class="link opts">Options</button>.</p>`;
+      <h4>Leads dashboard</h4>
+      <div class="actions"><button class="btn primary push">⇪ Push to dashboard</button><button class="link pushall">Send all again</button></div>
+      <div class="push-report small"></div>
+      <div class="actions"><button class="btn csv">Download CSV</button></div>
+      <p class="muted small">Leads go to the dashboard automatically after each search; the dashboard sends WhatsApp
+        messages and backs everything up to the Google Sheet. Dashboard sites, API key and speed: <button class="link opts">Options</button>.</p>`;
     body.querySelector(".csv").addEventListener("click", async () => {
       const r = await call("export");
       if (!r.ok) return flash(r.error);
@@ -349,15 +302,45 @@
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     });
-    body.querySelector(".sync").addEventListener("click", async () => {
-      flash("Saving…", true);
-      const r = await call("sync");
-      if (!r.ok) return flash(r.error);
-      if (!r.data.ok) return flash(r.data.error);
-      flash(`Saved to the Google Sheet.`, true);
-      setTimeout(loadLeads, 1500);
-    });
     body.querySelector(".opts").addEventListener("click", () => call("open-options"));
+    body.querySelector(".push").addEventListener("click", () => push(false));
+    body.querySelector(".pushall").addEventListener("click", () => push(true));
+    showPushStatus();
+  }
+
+  async function showPushStatus() {
+    const box = root.querySelector(".push-report");
+    const r = await call("push-status");
+    if (!box || !r.ok) return;
+    if (!r.data.hasKey) {
+      box.innerHTML = `<p class="note">Add the dashboard's API key in <b>Options → Dashboard</b> first.</p>`;
+      return;
+    }
+    box.innerHTML = r.data.sites.map((x) => `<p class="muted">${esc(siteName(x.site))}: ${x.lastPush ? "last pushed " + esc(new Date(x.lastPush).toLocaleString()) : "never pushed"}</p>`).join("");
+  }
+
+  function siteName(url) {
+    return url.replace(/^https?:\/\//, "").replace(/^www\./, "");
+  }
+
+  async function push(force) {
+    const box = root.querySelector(".push-report");
+    const btn = body.querySelector(".push");
+    btn.disabled = true;
+    box.innerHTML = `<p class="muted">Checking which dashboards are reachable…</p>`;
+    const r = await call("push", { force });
+    btn.disabled = false;
+    if (!r.ok) { box.innerHTML = `<p class="err">${esc(r.error)}</p>`; return; }
+    box.innerHTML = r.data.reports.map((x) => {
+      const name = `<b>${esc(siteName(x.site))}</b>`;
+      if (x.nothing) return `<p class="muted">${name}: nothing new since the last push.${x.duplicates || x.invalid ? ` (${x.duplicates} duplicates, ${x.invalid} incomplete left out)` : ""}</p>`;
+      if (!x.reachable) return `<p class="muted">${name}: ${esc(x.error || "not reachable")} — skipped, will try next time.</p>`;
+      const line = `${fmt(x.added)} new · ${fmt(x.updated)} updated · ${fmt(x.duplicates)} duplicates skipped${x.invalid ? ` · ${fmt(x.invalid)} invalid` : ""}`;
+      const problems = x.problems && x.problems.length
+        ? `<details><summary>${x.problems.length} data problem${x.problems.length === 1 ? "" : "s"}</summary>${x.problems.map((p) => `<div class="muted">• ${esc(p)}</div>`).join("")}</details>` : "";
+      return x.error ? `<p class="err">${name}: ${esc(x.error)}${x.sent ? ` (after ${fmt(x.sent)} sent: ${line})` : ""}</p>`
+        : `<p class="ok-line">✓ ${name}: ${line}</p>${problems}`;
+    }).join("");
   }
 
   // ------------------------------------------------------------ collector (hunt tab only)
@@ -375,7 +358,7 @@
     const raw = [];
     const read = () => document.querySelectorAll(CARD).forEach((el) => {
       const id = el.dataset.entityId || el.id;
-      if (id && !seen.has(id)) { seen.add(id); raw.push(el.dataset.entity || ""); }
+      if (id && !seen.has(id)) { seen.add(id); raw.push(withCardText(el)); }
     });
     read();
     let stale = 0;
@@ -392,6 +375,17 @@
       stale = raw.length === before ? stale + 1 : 0;
     }
     return report(step, raw, false);
+  }
+
+  // The listing's JSON plus the card's visible text (some review counts, e.g. Zomato votes, are only there).
+  function withCardText(el) {
+    try {
+      const data = JSON.parse(el.dataset.entity || "");
+      data.cardText = (el.innerText || "").slice(0, 400);
+      return JSON.stringify(data);
+    } catch (e) {
+      return el.dataset.entity || "";
+    }
   }
 
   async function report(step, raw, blocked) {
@@ -414,6 +408,7 @@
   // ------------------------------------------------------------ start
   (async function init() {
     ui.tab = recall("tab", "hunt");
+    if (!["hunt", "leads"].includes(ui.tab)) ui.tab = "hunt";
     const res = await call("ready");
     if (res.ok && res.data.collect) return collect(res.data.collect);
     if (recall("open", false)) toggle(true);
@@ -484,8 +479,46 @@
       .lead { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
       .lead-head { display: flex; justify-content: space-between; gap: 8px; }
       .score { background: #dcfce7; color: #15803d; font-weight: 700; border-radius: 99px; padding: 0 8px; font-size: 12px; }
+      .tags { display: flex; gap: 5px; align-items: center; white-space: nowrap; }
+      .stars { color: #b45309; font-size: 12px; font-weight: 600; }
+      .prio { font-size: 11px; font-weight: 700; border-radius: 99px; padding: 0 7px; background: #e2e8f0; color: #334155; }
+      .prio.high { background: #fee2e2; color: #b91c1c; }
       .why { color: #15803d; }
       .lead a, .note a { color: #2563eb; text-decoration: none; }
+      h4 { margin: 4px 0 0; font-size: 13px; }
+      .qlist { display: flex; flex-direction: column; gap: 6px; }
+      .qi { border: 1px solid #e2e8f0; border-radius: 9px; padding: 7px 9px; display: flex; flex-direction: column; gap: 5px; }
+      .qi.cur { border-color: #22c55e; background: #f0fdf4; }
+      .qi details summary { cursor: pointer; color: #2563eb; }
+      .st { font-size: 11px; font-weight: 700; border-radius: 99px; padding: 0 7px; background: #e2e8f0; color: #334155; white-space: nowrap; }
+      .st-waiting_reply, .st-sent { background: #dbeafe; color: #1d4ed8; } .st-queued { background: #fef3c7; color: #b45309; }
+      .st-no_whatsapp, .st-skipped { background: #f1f5f9; color: #94a3b8; }
+      .small-btns .btn { padding: 3px 9px; font-size: 12px; }
+      .funnel { display: flex; flex-direction: column; gap: 4px; }
+      .fn { display: grid; grid-template-columns: 96px 1fr 38px; gap: 8px; align-items: center; font-size: 12px; }
+      .fn-bar { height: 12px; background: #eef2f7; border-radius: 99px; overflow: hidden; }
+      .fn-bar span { display: block; height: 100%; background: #2563eb; border-radius: 99px; }
+      .fn.won .fn-bar span { background: #16a34a; } .fn.not_interested .fn-bar span { background: #cbd5e1; }
+      .fn b { text-align: right; }
+      .who summary { cursor: pointer; }
+      .who-q { margin: 6px 0; }
+      .who-list { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+      .who-item { text-align: left; border: 1px solid #e2e8f0; border-radius: 8px; padding: 5px 8px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; gap: 6px; font: inherit; }
+      .who-item:hover { border-color: #2563eb; }
+      .who-item[hidden] { display: none; }
+      .convs { display: flex; flex-direction: column; gap: 10px; }
+      .conv { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+      .chat { display: flex; flex-direction: column; gap: 5px; max-height: 220px; overflow-y: auto; }
+      .msg { border-radius: 10px; padding: 6px 9px; font-size: 12.5px; white-space: pre-wrap; max-width: 92%; }
+      .msg small { display: block; font-size: 10.5px; color: #64748b; margin-bottom: 2px; }
+      .msg.in { background: #f1f5f9; align-self: flex-start; }
+      .msg.out { background: #dcfce7; align-self: flex-end; }
+      .designs { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+      .dz { flex-direction: row; align-items: center; gap: 4px; font-weight: 400; }
+      .st-replied { background: #ede9fe; color: #6d28d9; } .st-interested { background: #dcfce7; color: #15803d; }
+      .st-proposal { background: #ccfbf1; color: #0f766e; } .st-won { background: #16a34a; color: #fff; }
+      .push-report { display: flex; flex-direction: column; gap: 4px; }
+      .ok-line { color: #15803d; }
       .empty { text-align: center; padding: 18px 0; display: flex; flex-direction: column; gap: 6px; }`;
   }
 })();

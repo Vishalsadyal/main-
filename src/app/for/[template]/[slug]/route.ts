@@ -5,17 +5,7 @@
 // WhatsApp/link preview, contact details and footer. Nothing is stored: everything comes
 // from the link, which the W3Tech Outreach Ext browser extension builds for each lead.
 
-const TEMPLATES: Record<string, string> = {
-  dentist: 'Dental Clinic',
-  medical: 'Clinic',
-  ophthalmology: 'Eye Care',
-  pediatrics: 'Child Care',
-  gynecology: "Women's Health",
-  skincare: 'Skin Clinic',
-  plasticsurgery: 'Cosmetic Surgery',
-  dieting: 'Diet & Nutrition',
-  fatloss: 'Weight Loss',
-};
+import { getDesign } from '@/lib/demo-library';
 
 // The theme's sample contact details, replaced with the business's.
 const SAMPLE_PHONE = /\+1 123 456 7890|\+91 123 456 7890/g;
@@ -51,7 +41,7 @@ function notFound(reason: string) {
 
 export async function GET(request: Request, { params }: { params: Promise<{ template: string; slug: string }> }) {
   const { template } = await params;
-  const label = TEMPLATES[template];
+  const label = getDesign(template)?.label;
   if (!label) return notFound('unknown-template');
 
   const url = new URL(request.url);
@@ -76,6 +66,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ temp
   const title = `${n} — ${esc(label)}${where}`;
   const description = `${n}${where}: book an appointment, call or message us on WhatsApp.`;
   const self = esc(url.pathname + url.search);
+  // Lead id (only on links sent from the dashboard): opens and taps are recorded for that lead.
+  const leadId = url.searchParams.get('l') || '';
+  const tracker = /^[\w:.\-]{3,200}$/.test(leadId)
+    ? `<script>(function(){var b=${JSON.stringify(JSON.stringify({ l: leadId, d: template })).replace(/</g, '\\u003c')};
+function send(e,s){try{var o=JSON.parse(b);o.e=e;o.s=s||0;var t=JSON.stringify(o);
+if(navigator.sendBeacon){navigator.sendBeacon('/api/demo-event',new Blob([t],{type:'text/plain'}));}
+else{fetch('/api/demo-event',{method:'POST',body:t,keepalive:true});}}catch(x){}}
+send('view');var t0=Date.now(),left=false;
+document.addEventListener('click',function(ev){var a=ev.target&&ev.target.closest?ev.target.closest('a'):null;if(!a)return;
+var h=a.getAttribute('href')||'';if(/wa\\.me|whatsapp/i.test(h))send('whatsapp');else if(/^tel:/i.test(h))send('call');
+else if(/appointment|contact|book/i.test(a.textContent||''))send('cta');},true);
+function leave(){if(left)return;left=true;send('leave',Math.round((Date.now()-t0)/1000));}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')leave();else{left=false;t0=Date.now();}});
+window.addEventListener('pagehide',leave);})();</script>`
+    : '';
   const wa = phone ? `https://wa.me/${phone}` : '';
 
   const logo = (tone: 'light' | 'dark') =>
@@ -127,6 +132,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ temp
   <span>Website preview for <strong>${n}</strong> · by <a href="https://www.w3tech.co.in" target="_blank" rel="noopener">W3Tech</a></span>
   <button type="button" aria-label="Hide" onclick="this.parentNode.remove()">×</button>
 </div>
+${tracker}
 </body>`;
   html = html.replace(/<\/body>/i, extras);
 

@@ -5,4 +5,4 @@ try {
 } catch (err) {
   console.error("Maps Leads background failed to load", err);
 }
-importScripts("w3tech-core.js", "w3tech-background.js");
+importScripts("w3tech-core.js", "w3tech-background.js", "w3tech-push.js");

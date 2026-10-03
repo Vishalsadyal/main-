@@ -7,7 +7,8 @@
  *   tab "Demos"  one row per demo (short ID, data columns and the rendered page)
  *   tab "Events" demo views and button clicks
  *   tab "Leads"  one row per lead you messaged from the Tasks page (updated on every send)
- *   tab "Hunt Leads" every business found by the W3Tech Outreach Ext browser extension
+ *   tab "Hunt Leads" backup of every lead in the W3Tech leads dashboard (one row per lead, updated in place)
+ *   tab "Messages"   backup of every WhatsApp message in the dashboard (one row per message, never repeated)
  *
  * SETUP (once)
  *   1. Create a Google Sheet, open Extensions → Apps Script, paste this file, Save.
@@ -23,7 +24,8 @@
  *   POST {key, action:"publish", demo:{...}}       -> insert/update a demo row (dashboard)
  *   POST {key, action:"unpublish", slug}           -> hide a demo (dashboard)
  *   POST {key, action:"saveLead", lead:{...}}      -> insert/update a lead row by lead_id (dashboard)
- *   POST {key, action:"saveHuntLeads", leads:[…]}  -> insert/update rows by "key" (browser extension)
+ *   POST {key, action:"saveHuntLeads", leads:[…]}  -> insert/update lead rows by "key" (leads dashboard)
+ *   POST {key, action:"saveMessages", messages:[…]} -> add message rows not saved yet, by "id" (leads dashboard)
  *   POST {action:"track", slug, event, page, meta}  -> record a view/click/engagement with the visitor's
  *                                                     IP, location and device (website; no key)
  */
@@ -41,7 +43,9 @@ var LEAD_COLUMNS = ["lead_id", "business_name", "category", "phone", "whatsapp",
   "demo_link", "last_action", "last_message", "last_contacted_at", "follow_ups", "first_saved_at", "updated_at"];
 var HUNT_COLUMNS = ["key", "business_name", "listing_title", "category", "phone", "whatsapp", "website", "address",
   "city", "state", "country", "score", "reasons", "status", "maps_url", "demo_link", "hunt", "search", "found_at",
-  "last_message", "sent_at", "updated_at"];
+  "last_message", "sent_at", "updated_at", "rating", "reviews", "rating_source", "priority",
+  "last_reply", "notes", "archived", "search_rank", "competitors", "dashboard_updated_at"];
+var MESSAGE_COLUMNS = ["id", "lead_id", "business_name", "at", "direction", "kind", "text"];
 var EVENT_TYPES = ["view", "call", "whatsapp", "email", "cta_header", "cta_hero", "cta_appointment", "cta_contact",
   "section", "scroll", "leave"];
 // Visitor details the website may send with an event, and their max lengths.
@@ -57,6 +61,7 @@ function setup() {
   ensureSheet_(book, "Events", EVENT_COLUMNS);
   ensureSheet_(book, "Leads", LEAD_COLUMNS);
   ensureSheet_(book, "Hunt Leads", HUNT_COLUMNS);
+  ensureSheet_(book, "Messages", MESSAGE_COLUMNS);
 }
 
 function ensureSheet_(book, name, columns) {
@@ -156,6 +161,7 @@ function doPost(e) {
     if (body.action === "unpublish") return unpublish_(body.slug);
     if (body.action === "saveLead") return saveLead_(body.lead || {});
     if (body.action === "saveHuntLeads") return saveHuntLeads_(body.leads);
+    if (body.action === "saveMessages") return saveMessages_(body.messages);
     return json_({ ok: false, error: "unknown action" });
   } finally {
     lock.releaseLock();
@@ -276,4 +282,25 @@ function saveHuntLeads_(leads) {
   });
   if (fresh.length) sheet.getRange(sheet.getLastRow() + 1, 1, fresh.length, HUNT_COLUMNS.length).setValues(fresh);
   return json_({ ok: true, added: fresh.length, updated: updated });
+}
+
+function saveMessages_(messages) {
+  if (!Array.isArray(messages) || messages.length > 500) return json_({ ok: false, error: "send 1-500 messages" });
+  var sheet = ensureSheet_(SpreadsheetApp.getActiveSpreadsheet(), "Messages", MESSAGE_COLUMNS);
+  var last = sheet.getLastRow();
+  var have = {};
+  if (last >= 2) sheet.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) { have[String(r[0])] = true; });
+  var fresh = [];
+  messages.forEach(function (m) {
+    var id = String((m && m.id) || "");
+    if (!id || have[id]) return; // already backed up: messages never change, so never written twice
+    have[id] = true;
+    fresh.push(MESSAGE_COLUMNS.map(function (col) {
+      var v = col === "id" ? id : m[col];
+      if (v === undefined || v === null) return "";
+      return asText_(typeof v === "string" ? v.slice(0, MAX_CELL) : v);
+    }));
+  });
+  if (fresh.length) sheet.getRange(sheet.getLastRow() + 1, 1, fresh.length, MESSAGE_COLUMNS.length).setValues(fresh);
+  return json_({ ok: true, added: fresh.length, skipped: messages.length - fresh.length });
 }

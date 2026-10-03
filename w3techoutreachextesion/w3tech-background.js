@@ -152,6 +152,9 @@ async function takeResults(hunt, msg) {
   const fresh = [];
   for (const e of entities) {
     const lead = W3Core.toLead(e, step, hunt);
+    const comp = W3Core.competitorsFor(e, entities);
+    lead.searchRank = comp.rank;              // position in this Bing search (1 = top)
+    lead.competitors = { top: comp.top, nearby: comp.nearby, search: `${step.term} in ${step.city}` };
     const keys = W3Core.dedupeKeys(lead);
     if (keys.some((k) => index[k])) continue;
     Object.assign(lead, W3Core.score(lead, s));
@@ -171,7 +174,7 @@ async function takeResults(hunt, msg) {
     .concat(hunt.recent).slice(0, 8);
   hunt.next = msg.index + 1; hunt.pending = null; hunt.error = ""; hunt.lastAt = Date.now();
   await saveHunt(hunt);
-  if (fresh.length && s.sheetSync) syncToSheet(fresh.map((l) => l.key)); // don't wait for Google
+  if (fresh.length && s.dashboardKey) autoPush(); // to the leads dashboard (w3tech-push.js), in the background
   if (hunt.next >= hunt.total) { await goNext(hunt); return { delay: 0, finished: true }; }
   const delay = s.delayMin + Math.random() * Math.max(0, s.delayMax - s.delayMin);
   return { delay: Math.round(delay), found: entities.length, fresh: fresh.length, hot };
@@ -199,13 +202,16 @@ async function sendList(limit = 30) {
   const s = await settings();
   const leads = (await allLeads())
     .filter((l) => l.hot && l.status === "new" && W3Core.whatsappLink(l))
-    .sort((a, b) => b.score - a.score || a.foundAt.localeCompare(b.foundAt));
+    // Best first: score (incl. the established-business bonus), then how many reviews, then oldest find.
+    .sort((a, b) => b.score - a.score || (b.reviewCount || 0) - (a.reviewCount || 0) || a.foundAt.localeCompare(b.foundAt));
   return {
     total: leads.length,
     leads: leads.slice(0, limit).map((l) => {
       const message = W3Core.fillMessage(l, s);
       return { key: l.key, name: l.name, city: l.city, state: l.state, category: l.categoryLabel, score: l.score,
                phone: l.phone, website: l.website, mapsUrl: l.mapsUrl, message, whatsapp: W3Core.whatsappLink(l),
+               rating: l.rating, reviewCount: l.reviewCount || 0, ratingSource: l.ratingSource || "",
+               priority: l.priority || W3Core.priorityFor(l.score),
                reasons: l.reasons.filter((r) => r.points).map((r) => r.reason) };
     })
   };
@@ -223,8 +229,10 @@ async function stats() {
   const leads = await allLeads();
   const count = (f) => leads.filter(f).length;
   return { total: leads.length, hot: count((l) => l.hot), noWebsite: count((l) => !l.website),
+           high: count((l) => l.score >= 70), established: count((l) => l.established),
            toSend: count((l) => l.hot && l.status === "new" && W3Core.whatsappLink(l)),
-           sent: count((l) => l.status === "sent"), unsynced: (await get(K.unsynced, [])).length };
+           sent: count((l) => ["sent", "waiting_reply", "replied", "interested", "not_interested", "won"].includes(l.status)),
+           replied: count((l) => ["replied", "interested", "won"].includes(l.status)), unsynced: (await get(K.unsynced, [])).length };
 }
 
 function csvCell(v) {
@@ -235,7 +243,8 @@ function csvCell(v) {
 async function exportCsv() {
   const cols = [["Name", "name"], ["Listing title", "title"], ["Category", "categoryLabel"], ["Phone", "phone"],
     ["Website", "website"], ["Address", "address"], ["City", "city"], ["State", "state"], ["Country", "country"],
-    ["Latitude", "lat"], ["Longitude", "lon"], ["Bing Maps URL", "mapsUrl"], ["Score", "score"], ["Status", "status"],
+    ["Latitude", "lat"], ["Longitude", "lon"], ["Bing Maps URL", "mapsUrl"], ["Rating", "rating"], ["Reviews", "reviewCount"], ["Rating source", "ratingSource"],
+    ["Score", "score"], ["Priority", "priority"], ["Status", "status"],
     ["Found", "foundAt"], ["Hunt", "hunt"]];
   const rows = (await allLeads()).sort((a, b) => b.score - a.score);
   return [cols.map((c) => c[0]).join(",")]
@@ -247,9 +256,10 @@ function sheetRow(l, s) {
   const wa = W3Core.whatsappNumber(l.phone, l.callingCode, l.countryCode);
   return { key: l.key, business_name: l.name, listing_title: l.title, category: l.categoryLabel, phone: l.phone,
     whatsapp: wa ? `https://wa.me/${wa}` : "", website: l.website, address: l.address, city: l.city, state: l.state,
-    country: l.country, score: l.score, reasons: l.reasons.filter((r) => r.points).map((r) => r.reason).join("; "),
-    status: l.status, maps_url: l.mapsUrl, demo_link: W3Core.demoLink(l, s), hunt: l.hunt, search: l.search,
-    found_at: l.foundAt, last_message: l.lastMessage || "", sent_at: l.sentAt || "" };
+    country: l.country, score: l.score, priority: l.priority || W3Core.priorityFor(l.score),
+    rating: l.rating == null ? "" : l.rating, reviews: l.reviewCount || "", rating_source: l.ratingSource || "", reasons: l.reasons.filter((r) => r.points).map((r) => r.reason).join("; "),
+    status: W3Core.STATUS_LABELS[l.status] || l.status, maps_url: l.mapsUrl, demo_link: W3Core.demoLink(l, s), hunt: l.hunt, search: l.search,
+    found_at: l.foundAt, last_message: l.lastMessage || "", sent_at: l.sentAt || "", last_reply: l.lastReply || "" };
 }
 
 let syncing = Promise.resolve();
@@ -333,7 +343,6 @@ async function handle(msg, sender) {
       if (msg.status === "sent") Object.assign(changes, { sentAt: new Date().toISOString(), lastMessage: msg.message || "" });
       const lead = await updateLead(msg.key, changes);
       const s = await settings();
-      if (s.sheetSync) syncToSheet([lead.key]);
       return { ok: true };
     }
     case "export":
@@ -355,6 +364,7 @@ async function handle(msg, sender) {
       return { removed: keys.length };
     }
     default:
+      if (String(msg.type).startsWith("push")) return handlePush(msg);        // w3tech-push.js
       throw new Error("Unknown request");
   }
 }

@@ -28,32 +28,21 @@
   <header>🎯 W3Tech Outreach Ext — Options</header>
   <main>
     <section>
-      <h2>Google Sheet</h2>
-      <p>Every lead found is copied to the <b>Hunt Leads</b> tab of your W3Tech Google Sheet, and updated when you mark it sent.
-        Use the web-app URL and the <code>DEMO_API_KEY</code> of the Sheet's Apps Script (<code>sheets/DemoApi.gs</code> — deploy its latest version).</p>
-      <label>Apps Script web-app URL <input id="sheetUrl" placeholder="https://script.google.com/macros/s/…/exec"></label>
-      <label>Key (DEMO_API_KEY) <input id="sheetKey" type="password" autocomplete="off"></label>
-      <label class="check"><input type="checkbox" id="sheetSync"> Copy leads to the Sheet automatically</label>
+      <h2>Leads dashboard</h2>
+      <p>“Push to dashboard” (panel → Leads) sends your leads to the W3Tech leads dashboard on each site below — a site
+        that can't be reached is skipped and tried next time. Duplicates and incomplete leads are left out; nothing is
+        ever deleted there.</p>
+      <label>API key (LEADS_API_KEY of the site) <input id="dashboardKey" type="password" autocomplete="off"></label>
+      <label>Sites, one per line <textarea id="dashboardSites" style="min-height:70px"></textarea></label>
     </section>
 
     <section>
-      <h2>Which leads to message</h2>
+      <h2>Good leads</h2>
       <div class="grid">
-        <label>Minimum score for “Send” <input id="hotScore" type="number" min="0" max="100"></label>
+        <label>Minimum score for a “good” lead <input id="hotScore" type="number" min="0" max="100"></label>
       </div>
-      <p>Points: no website 40 · only a social page 35 · local business 10 · phone 5 · mobile (WhatsApp) 5 · W3Tech template for the trade 7.
-        A business with no website and a mobile number scores 60–67.</p>
-    </section>
-
-    <section>
-      <h2>WhatsApp message</h2>
-      <p>Placeholders: <code>{name}</code> <code>{city}</code> <code>{in_city}</code> <code>{pitch}</code> (“noticed you don't have a website yet.” etc.)
-        <code>{demo_link}</code> <code>{category}</code>. You can still edit each message before sending.</p>
-      <textarea id="message"></textarea>
-      <label>Website preview for each trade <small style="font-weight:400;color:#64748b">(one per line: <code>trade = template</code> or <code>trade = https://link</code>; <code>other</code> is used when nothing matches).
-        A template gives each lead a preview with their own name, city and phone: dentist, medical, ophthalmology,
-        pediatrics, gynecology, skincare, plasticsurgery, dieting, fatloss.</small>
-        <textarea id="demoLinks" style="min-height:190px"></textarea></label>
+      <p>Points: no website 40 · only a social page 35 · local business 10 · phone 5 · mobile (WhatsApp) 5 · W3Tech template for the trade 7 · established business (★4.3+ from 25+ reviews) 10.
+        A business with no website and a mobile number scores 60–67; well-reviewed ones 70–77. Priority: High 70+, Normal 60–69, Low below 60. Messages are sent from the leads dashboard.</p>
     </section>
 
     <section>
