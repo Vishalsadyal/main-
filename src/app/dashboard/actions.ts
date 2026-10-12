@@ -72,7 +72,7 @@ export async function sendMessage(form: FormData): Promise<void> {
   const kind = String(form.get('kind') || 'first') as keyof typeof MESSAGES;
   if (!(kind in MESSAGES)) throw new Error('Unknown message');
   const demos = String(form.get('demos') || '').split(',').map((d) => d.trim()).filter(Boolean).slice(0, 20);
-  await recordSent(id, text, kind, demos);
+  await recordSent(id, text, kind, demos, String(form.get('sender') || ''));
   scheduleBackup();
   refresh(id);
   const back = String(form.get('back') || '');
@@ -139,7 +139,9 @@ export async function saveSettingsAction(form: FormData): Promise<void> {
     const n = parseInt(values[key], 10);
     values[key] = String(Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback);
   };
-  clamp('dailySend', 1, 200, 50);
+  clamp('sender1Daily', 0, 200, 50);
+  clamp('sender2Daily', 0, 200, 50);
+  for (const k of ['sender1Phone', 'sender2Phone']) values[k] = (values[k] || '').replace(/[^\d+]/g, '');
   clamp('minScore', 0, 100, 60);
   for (const k of ['fu1Days', 'fu2Days', 'finalDays']) clamp(k, 0, 60, 3);
   clamp('closeAfterDays', 1, 60, 3);
@@ -166,4 +168,22 @@ export async function resetTexts(): Promise<void> {
   await resetMessageTexts();
   refresh();
   redirect('/dashboard/settings?saved=1');
+}
+
+export async function saveMeeting(form: FormData): Promise<void> {
+  await requireLogin();
+  const { setMeeting } = await import('@/lib/outreach');
+  const id = leadId(form);
+  await setMeeting(id, String(form.get('at') || ''), String(form.get('link') || ''));
+  scheduleBackup();
+  refresh(id);
+}
+
+export async function finishMeeting(form: FormData): Promise<void> {
+  await requireLogin();
+  const { meetingDone } = await import('@/lib/outreach');
+  const id = leadId(form);
+  await meetingDone(id, String(form.get('note') || '').trim());
+  scheduleBackup();
+  refresh(id);
 }

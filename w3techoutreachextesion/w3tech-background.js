@@ -87,6 +87,10 @@ async function createHunt(form, tabId) {
   const chosen = new Set(form.states || []);
   const order = (await statesOf(country.code, minPop)).map((s) => s.state).filter((s) => !chosen.size || chosen.has(s));
   if (!order.length) throw new Error("Tick at least one state.");
+  const s0 = await settings();
+  if (!s0.dashboardKey || !(s0.dashboardSites || []).length) {
+    throw new Error("Set up the leads dashboard first (Options → Leads dashboard: site and API key) — leads are saved there.");
+  }
   const all = (await towns(country.code)).filter((t) => t.pop >= minPop && order.includes(t.state));
   // State by state (biggest first), biggest town first inside each state.
   all.sort((a, b) => order.indexOf(a.state) - order.indexOf(b.state) || b.pop - a.pop);
@@ -100,6 +104,16 @@ async function createHunt(form, tabId) {
     found: 0, fresh: 0, hot: 0, byState: {}, recent: [], status: "running", tabId,
     pending: null, error: "", createdAt: new Date().toISOString(), waitUntil: null, lastAt: Date.now()
   };
+  // Skip searches the dashboard already has (e.g. after the extension was reset).
+  const done = await searchedOnDashboard(s);
+  hunt.skip = [];
+  if (done) {
+    for (let i = 0; i < hunt.total; i++) {
+      const st = stepAt(hunt, i);
+      if (done.searches.has(`${st.term} in ${st.city}`.toLowerCase())) hunt.skip.push(i);
+    }
+  }
+  hunt.skipped = hunt.skip.length;
   await put({ [K.hunt]: hunt });
   await goNext(hunt);
   return hunt;
@@ -110,6 +124,10 @@ async function saveHunt(hunt) { await put({ [K.hunt]: hunt }); }
 // Send the hunt tab to the next search (or finish / wait for tomorrow).
 async function goNext(hunt) {
   if (hunt.status !== "running") return saveHunt(hunt);
+  if (hunt.skip && hunt.skip.length) { // already on the dashboard
+    const skip = new Set(hunt.skip);
+    while (hunt.next < hunt.total && skip.has(hunt.next)) hunt.next++;
+  }
   if (hunt.next >= hunt.total) {
     hunt.status = "done"; hunt.pending = null;
     return saveHunt(hunt);
@@ -148,36 +166,44 @@ async function takeResults(hunt, msg) {
   await countSearch();
   const s = await settings();
   const entities = W3Core.parseEntities(msg.raw || []).filter((e) => !e.closed).slice(0, hunt.maxPerSearch);
-  const index = await get(K.index, {});
-  const fresh = [];
+  // Nothing is stored here: the dashboard's database checks duplicates and keeps the leads.
+  const rows = [];
+  const seen = new Set();
+  let hot = 0;
   for (const e of entities) {
     const lead = W3Core.toLead(e, step, hunt);
     const comp = W3Core.competitorsFor(e, entities);
     lead.searchRank = comp.rank;              // position in this Bing search (1 = top)
     lead.competitors = { top: comp.top, nearby: comp.nearby, search: `${step.term} in ${step.city}` };
     const keys = W3Core.dedupeKeys(lead);
-    if (keys.some((k) => index[k])) continue;
+    if (keys.some((k) => seen.has(k))) continue; // same business twice in one search
+    keys.forEach((k) => seen.add(k));
     Object.assign(lead, W3Core.score(lead, s));
-    keys.forEach((k) => { index[k] = lead.key; });
-    fresh.push(lead);
+    if (lead.hot) hot++;
+    rows.push(payload(lead, s));
   }
-  const hot = fresh.filter((l) => l.hot).length;
-  const writes = { [K.index]: index };
-  fresh.forEach((l) => { writes[LEAD + l.key] = l; });
-  await put(writes);
+  let reports = [];
+  try {
+    reports = await pushRows(rows, s); // w3tech-push.js — unreachable sites keep them in the outbox
+  } catch (err) {
+    hunt.error = err.message;
+  }
+  const ok = reports.find((r) => !r.error) || null;
+  const fresh = ok ? ok.added : 0;
+  const waiting = reports.some((r) => r.waiting);
 
   const st = hunt.byState[step.state] || { done: 0, found: 0, fresh: 0, hot: 0 };
-  st.done += 1; st.found += entities.length; st.fresh += fresh.length; st.hot += hot;
+  st.done += 1; st.found += entities.length; st.fresh += fresh; st.hot += hot;
   hunt.byState[step.state] = st;
-  hunt.found += entities.length; hunt.fresh += fresh.length; hunt.hot += hot; hunt.done += 1;
-  hunt.recent = [{ term: step.term, city: step.city, found: entities.length, fresh: fresh.length, hot }]
+  hunt.found += entities.length; hunt.fresh += fresh; hunt.hot += hot; hunt.done += 1;
+  hunt.recent = [{ term: step.term, city: step.city, found: entities.length, fresh, hot, waiting }]
     .concat(hunt.recent).slice(0, 8);
-  hunt.next = msg.index + 1; hunt.pending = null; hunt.error = ""; hunt.lastAt = Date.now();
+  hunt.next = msg.index + 1; hunt.pending = null; hunt.lastAt = Date.now();
+  hunt.error = waiting && !ok ? "Dashboard not reachable — results are kept in the outbox and sent automatically later." : "";
   await saveHunt(hunt);
-  if (fresh.length && s.dashboardKey) autoPush(); // to the leads dashboard (w3tech-push.js), in the background
   if (hunt.next >= hunt.total) { await goNext(hunt); return { delay: 0, finished: true }; }
   const delay = s.delayMin + Math.random() * Math.max(0, s.delayMax - s.delayMin);
-  return { delay: Math.round(delay), found: entities.length, fresh: fresh.length, hot };
+  return { delay: Math.round(delay), found: entities.length, fresh, hot };
 }
 
 async function failStep(hunt, reason) {
@@ -374,7 +400,8 @@ function publicHunt(h, tabId) {
   return { id: h.id, name: h.name, status: h.status, country: h.country, terms: h.terms, minPop: h.minPop,
     total: h.total, done: h.done, failed: h.failed, next: h.next, found: h.found, fresh: h.fresh, hot: h.hot,
     towns: h.towns.length, recent: h.recent, error: h.error, waitUntil: h.waitUntil,
-    pct: h.total ? Math.round(((h.done + h.failed) / h.total) * 100) : 0,
+    skipped: h.skipped || 0,
+    pct: h.total ? Math.round(((h.done + h.failed + (h.skipped || 0)) / h.total) * 100) : 0,
     current: current && { term: current.term, city: current.city, state: current.state },
     isHuntTab: h.tabId === tabId,
     states: Object.entries(h.byState).map(([state, v]) => Object.assign({ state }, v)) };

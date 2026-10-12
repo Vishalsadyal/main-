@@ -18,12 +18,6 @@ async function load() {
   $("delayMin").value = s.delayMin;
   $("delayMax").value = s.delayMax;
   $("dailyLimit").value = s.dailyLimit;
-  const st = await call("status");
-  if (st.ok) {
-    const n = st.data.stats;
-    $("count").textContent = `${n.total.toLocaleString()} leads stored (${n.hot.toLocaleString()} good, ${n.sent.toLocaleString()} messaged` +
-      `).`;
-  }
 }
 
 function num(id, min, max) {
@@ -39,7 +33,7 @@ $("save").addEventListener("click", async () => {
     for (const site of dashboardSites) {
       if (!/^https?:\/\/[\w.-]+(:\d+)?$/.test(site)) throw new Error(`Dashboard site “${site}” should look like https://www.w3tech.co.in or http://localhost:3000`);
     }
-    const delayMin = num("delayMin", 3, 300), delayMax = num("delayMax", 3, 600);
+    const delayMin = num("delayMin", 1, 300), delayMax = num("delayMax", 1, 600);
     if (delayMax < delayMin) throw new Error("The pause “to” must be at least the pause “from”.");
     settings = { dashboardSites, dashboardKey: $("dashboardKey").value.trim(), 
       hotScore: num("hotScore", 0, 100), delayMin, delayMax, dailyLimit: num("dailyLimit", 1, 2000) };
@@ -52,11 +46,5 @@ $("save").addEventListener("click", async () => {
   load();
 });
 
-$("clear").addEventListener("click", async () => {
-  if (!confirm("Delete every hunt lead stored in this browser? Leads already pushed to the dashboard stay there.")) return;
-  const res = await call("clear-leads");
-  say(res.ok ? `Deleted ${res.data.removed} leads.` : res.error, !res.ok);
-  load();
-});
 
 load();

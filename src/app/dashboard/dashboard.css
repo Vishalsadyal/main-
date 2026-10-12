@@ -51,6 +51,9 @@
 .dash .mb-3, .dash.mb-3 {
   margin-bottom: calc(0.25rem * 3);
 }
+.dash .ml-1\.5, .dash.ml-1\.5 {
+  margin-left: calc(0.25rem * 1.5);
+}
 .dash .ml-2, .dash.ml-2 {
   margin-left: calc(0.25rem * 2);
 }
@@ -128,6 +131,9 @@
 }
 .dash .min-w-52, .dash.min-w-52 {
   min-width: calc(0.25rem * 52);
+}
+.dash .min-w-56, .dash.min-w-56 {
+  min-width: calc(0.25rem * 56);
 }
 .dash .flex-1, .dash.flex-1 {
   flex: 1;
@@ -414,6 +420,13 @@
   font-size: 0.75rem;
   line-height: var(--tw-leading, calc(1 / 0.75));
 }
+.dash .text-\[15px\], .dash.text-\[15px\] {
+  font-size: 15px;
+}
+.dash .leading-relaxed, .dash.leading-relaxed {
+  --tw-leading: 1.625;
+  line-height: 1.625;
+}
 .dash .font-bold, .dash.font-bold {
   --tw-font-weight: 700;
   font-weight: 700;
@@ -448,6 +461,9 @@
 }
 .dash .text-amber-800, .dash.text-amber-800 {
   color: oklch(47.3% 0.137 46.201);
+}
+.dash .text-amber-900, .dash.text-amber-900 {
+  color: oklch(41.4% 0.112 45.904);
 }
 .dash .text-blue-700, .dash.text-blue-700 {
   color: oklch(48.8% 0.243 264.376);
@@ -506,6 +522,9 @@
 .dash .underline, .dash.underline {
   text-decoration-line: underline;
 }
+.dash .opacity-80, .dash.opacity-80 {
+  opacity: 80%;
+}
 .dash .shadow-sm, .dash.shadow-sm {
   --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
   box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -520,6 +539,9 @@
 }
 .dash .ring-amber-200, .dash.ring-amber-200 {
   --tw-ring-color: oklch(92.4% 0.12 95.746);
+}
+.dash .ring-amber-300, .dash.ring-amber-300 {
+  --tw-ring-color: oklch(87.9% 0.169 91.605);
 }
 .dash .ring-blue-200, .dash.ring-blue-200 {
   --tw-ring-color: oklch(88.2% 0.059 254.128);
@@ -608,6 +630,16 @@
     }
   }
 }
+.dash .disabled\:cursor-not-allowed, .dash.disabled\:cursor-not-allowed {
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+.dash .disabled\:opacity-40, .dash.disabled\:opacity-40 {
+  &:disabled {
+    opacity: 40%;
+  }
+}
 .dash .disabled\:opacity-50, .dash.disabled\:opacity-50 {
   &:disabled {
     opacity: 50%;
@@ -621,6 +653,11 @@
 .dash .sm\:col-span-2, .dash.sm\:col-span-2 {
   @media (width >= 40rem) {
     grid-column: span 2 / span 2;
+  }
+}
+.dash .sm\:col-span-3, .dash.sm\:col-span-3 {
+  @media (width >= 40rem) {
+    grid-column: span 3 / span 3;
   }
 }
 .dash .sm\:grid-cols-2, .dash.sm\:grid-cols-2 {
@@ -672,6 +709,10 @@
   syntax: "*";
   inherits: false;
   initial-value: solid;
+}
+@property --tw-leading {
+  syntax: "*";
+  inherits: false;
 }
 @property --tw-font-weight {
   syntax: "*";
@@ -750,6 +791,7 @@
     .dash, .dash *, .dash ::before, .dash ::after, .dash ::backdrop {
       --tw-divide-y-reverse: 0;
       --tw-border-style: solid;
+      --tw-leading: initial;
       --tw-font-weight: initial;
       --tw-tracking: initial;
       --tw-shadow: 0 0 #0000;

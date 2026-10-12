@@ -14,7 +14,7 @@ const DAY = 86_400_000;
 // ------------------------------------------------------------------ settings
 
 export const DEFAULT_SETTINGS = {
-  dailySend: '50',
+  dailySend: '20',
   minScore: '60',
   // Follow-up plan when they don't reply (days to wait before each message; 0 = skip that message)
   fu1Days: '2',          // first message -> follow-up 1
@@ -29,101 +29,104 @@ export const DEFAULT_SETTINGS = {
   price: '₹7,000',       // {price} — the complete package
   starterPrice: '',      // {starter_price} — optional cheaper option (empty = same as {price})
   myName: 'W3Tech',
+  myCity: 'Punjab',      // {my_city} — where you are, for the meeting messages
+  // Your WhatsApp numbers. Each has its own daily limit for first messages; when One is full, use Two.
+  sender1Name: 'One',
+  sender1Phone: '9805559015',
+  sender1Daily: '20',
+  sender2Name: 'Two',
+  sender2Phone: '7814958809',
+  sender2Daily: '20',
   openLine: 'Please feel free to message or call me anytime — happy to talk about anything, even if you just have questions. No pressure at all. 🙂',
 
   // ---- first contact
   first:
+    // The video link comes first: WhatsApp builds its preview card from the first link in a message.
+    '🎥 {video_link}\n\n' +
     'Hi {name} 🙏\n\n' +
-    'I came across {name} on the map{in_city} and {pitch}\n\n' +
-    '{competitor_line}' +
-    'Every day, people near you search online for exactly what you offer. When they can\'t find you, many of them call ' +
-    'someone else — even when your service is better.\n\n' +
-    'So I made a free preview of how your business could look online — with your name on it, and buttons so customers can call or ' +
-    'WhatsApp you in one tap:\n{design_links}\n\n' +
-    'No cost to look. If you like it, I\'ll make it fully yours — your photos, services and timings.\n\n' +
-    '{open_line}\n\n' +
-    '— {my_name}',
+    'I found your {business_word} on *Google Maps*{in_city} and {pitch}\n\n{competitor_links}' +
+    'So I made you a *free website preview* — with your name, and *call & WhatsApp buttons*:\n{design_links}\n\n' +
+    '*Shall I set it up for you?* 🙂 No pressure at all.\n— {my_name}',
 
-  // ---- no reply: gentle follow-ups
+  // ---- no reply: gentle follow-ups (short — 2–4 lines each)
   followup_1:
-    'Hi {name}, hope your day is going well! 🙂\n\n' +
-    'I made a few more designs for you — have a look and see which one feels most like you:\n{design_links}\n\n' +
-    'You have built something people trust. A website is simply where new customers discover it first.\n\n{open_line}',
+    'Hi {name} 🙂 Did you see your *website preview*?\n\n' +
+    'A few more styles for you:\n{design_links}\n\n' +
+    '*Which one do you like?*',
   followup_2:
     'Hi {name} 🙏\n\n{competitor_links}' +
-    'Most people now simply search “near me” on Google and pick from the first few results — they check timings, ' +
-    'location, photos and reviews. When they can\'t find that for you, they choose whoever they can find.\n\n' +
-    'You\'ve already done the hard part: the quality and the trust. A website just makes sure people can see it.\n\n' +
-    'Your preview is still ready:\n{design_links}\n\n{open_line}',
+    '*Shall we get you found on Google too?* Your preview:\n{design_links}',
   followup_final:
-    'Hi {name}, this will be my last message — I don\'t want to disturb you. 🙏\n\n' +
-    'I genuinely believe your work deserves to be found online. If budget was the worry: our complete package is just ' +
-    '{starter_price} — website, domain, hosting, Google & Apple Maps setup, everything included for the first year.\n\n' +
-    'Your design stays ready whenever you are:\n{design_links}\n\nIf you ever want to talk — about this or anything else — I\'m just a message away. ' +
-    'Wishing you lots of growth! 🌱',
+    'Hi {name}, my last message 🙏\n\n' +
+    'Complete website + Google Maps setup, just *{starter_price}*.\n\n' +
+    'Reply *“Yes”* anytime — your design stays ready.',
 
-  // ---- after they reply
+  // ---- after they reply (short — easy to read on a phone)
   more_designs:
-    'Thank you for replying, {name}! 😊 Really happy to hear from you.\n\n' +
-    'Here are a few designs made with your name — tap any to see how you could look online:\n{design_links}\n\n' +
-    'Tell me which one you like, and I\'ll shape it around your services, your photos and the way you look after your customers.\n\n{open_line}',
+    'Thank you, {name}! 😊\n\n' +
+    'Here are your designs:\n{design_links}\n\n' +
+    '*Which one do you like?* I\'ll add your photos and services.',
   pricing:
     'Thank you for asking, {name}! 😊\n\n' +
-    'Here is everything we do to get you fully online — one price, *{price}*, no hidden costs:\n\n' +
-    '🌐 *Your website*\n' +
-    '• Professional design that works perfectly on mobile and computer\n' +
-    '• Home, About, Services and Contact pages\n' +
-    '• WhatsApp, Call and Google Maps buttons\n' +
-    '• Photo gallery and contact form, linked to your social media\n\n' +
-    '🔒 *Domain, hosting and security — 1 year included*\n' +
-    '• Your own web address (like yourname.com)\n' +
-    '• Fast hosting with SSL (the secure 🔒)\n' +
-    '• Business email setup, where your plan supports it\n\n' +
-    '📍 *Get found on Google and maps*\n' +
-    '• Google Business Profile setup and improvement, so you show up for “near me” searches\n' +
-    '• ⭐ Review boost: your own Google review link + QR code for your counter, and ready messages to ask happy ' +
-    'customers — we help you reach 50 genuine reviews, which helps you rank higher on Google Maps\n' +
-    '• Apple Maps (Apple Business Connect) setup\n' +
-    '• Basic local SEO, Google Search Console and indexing\n\n' +
-    '🤝 *After launch*\n' +
-    '• 30 days support for small changes\n' +
-    '• Website backup\n\n' +
-    'My aim isn\'t just to sell a website — it\'s to make sure that when someone in {area} searches for what you do, ' +
-    'they find *you*.\n\n' +
-    'If anything in the package isn\'t clear, or you\'d like something different, please tell me — we can talk it through ' +
-    'and find what works best for you. 🙂\n\nShall we start? Your first version can be ready in 2–3 days.',
+    '*Complete package: {price}* — no hidden costs\n' +
+    '✅ Professional website (mobile-friendly)\n' +
+    '✅ Domain, hosting & SSL — 1 year\n' +
+    '✅ WhatsApp, Call & Maps buttons\n' +
+    '✅ Google & Apple Maps setup\n' +
+    '✅ 30 days support\n\n' +
+    'Ready in *2–3 days*. *Shall we start?* 🙂',
   call:
-    'Of course, {name}! I\'ll call you shortly. 📞\n\nIf another time suits you better, just tell me — happy to work around your schedule.',
+    'Sure, {name}! *I\'ll call you shortly.* 📞\n\nIf another time is better, just tell me.',
+  meeting_video:
+    'Thank you, {dear}! 🙏\n\n' +
+    'I\'m in {my_city}, so let\'s do a quick *video call* (15 min) — I\'ll show you your designs and the package.\n\n' +
+    '*What time suits you?* 🙂',
+  meeting_confirm:
+    'Confirmed, {dear}! 🙏 Our call is on *{meeting_time}*.\n\n' +
+    '👉 Join here: {meeting_link}\n\n' +
+    'Just tap the link at that time — no sign-up needed.',
+  meeting_reminder:
+    'Hi {dear} 🙏 Reminder — our call is at *{meeting_time}*.\n\n' +
+    '👉 {meeting_link}\n\nSee you soon! 🙂',
+  meeting_missed:
+    'Hi {dear} 🙏 We missed you on the call — no worries!\n\n' +
+    'Here are your designs:\n{design_links}\n\n' +
+    '*Choose one* and we\'ll make your full website. Or tell me a better time to call.',
+  correction_thanks:
+    'Thank you for correcting me, {dear}! 🙏 I\'ve updated it — your design will show the right details.',
+  meeting_visit:
+    'Thank you, {dear}! 🙏 Happy to meet you.\n\n' +
+    '*What day and time suit you?* Please share your location and I\'ll be there.',
   changes:
-    'Absolutely, {name}! This is *your* website — it should feel exactly like you. 😊\n\n' +
-    'Tell me what you\'d like: colours, photos, services, wording — anything.\n\n' +
-    'Here are the designs again so we can pick a starting point:\n{design_links}\n\n{open_line}',
+    'Of course, {name}! 😊 *Tell me what to change* — colours, photos, services, anything.\n\n' +
+    'Your designs:\n{design_links}',
+  introduction:
+    'Thank you, {dear} 🙏\n\n' +
+    'We are *{my_name}* from {my_city} — we make websites for clinics and local businesses and get them found on Google.\n\n' +
+    '🎥 *45-sec video:* {video_link}\n' +
+    'Your preview:\n{design_links}\n\n' +
+    '*Shall I set it up for you?* 🙂',
   portfolio:
-    'Sure, {name}! Here are designs we\'ve made for businesses like yours:\n{design_links}\n\n' +
-    'You can see more of our work at https://www.w3tech.co.in — every website we build is shaped around the owner\'s ' +
-    'goals, not copied from a template.\n\n{open_line}',
+    'Sure, {name}! Designs for businesses like yours:\n{design_links}\n\n' +
+    'More of our work: https://www.w3tech.co.in',
   timeline:
-    'Hi {name}! Once you share your photos and details, your first version is ready in *2–3 days*, and the full website — ' +
-    'domain, Google and Apple Maps included — goes live in about a week. 🚀\n\n' +
-    'You focus on your customers; we take care of everything technical.\n\n{open_line}',
+    'Hi {name}! First version in *2–3 days*, fully live in about *a week*. 🚀\n\n' +
+    'We handle everything technical.',
   follow_up:
-    'Hi {name}, just checking in 🙂 Did you get a chance to look at the design and the package?\n\n' +
-    'If you have any questions, or want anything changed, I\'m happy to help — or we can have a quick 5-minute call.\n\n{open_line}',
+    'Hi {name} 🙂 Any questions?\n\n' +
+    'Pay *50% to start*, the rest only *after you approve*. Ready in *2–3 days*.',
   not_now:
-    'Completely understand, {name} 🙏 Running a business keeps you busy.\n\n' +
-    'I\'ll keep your design ready — whenever the time is right, just message me here and we\'ll get you online. ' +
-    'And if you want to talk anything through before deciding, I\'m always happy to. 🙂',
+    'No problem, {name} 🙏 I\'ll keep your design ready — *message me anytime*.',
   not_interested:
-    'Thank you for letting me know, {name} 🙏 I won\'t message again.\n\n' +
-    'Wishing you and your team lots of success — and if you ever need help online, I\'m just a message away.',
+    'Thank you for letting me know, {name} 🙏 I won\'t message again. Wishing you lots of success!',
   onboarding:
-    'Wonderful, {name}! 🎉 Thank you for trusting us — we\'ll take good care of it.\n\n' +
-    'To get started, please send:\n' +
-    '1️⃣ Your logo (if you have one)\n' +
-    '2️⃣ A few photos of your clinic / shop / work\n' +
-    '3️⃣ Your services and timings\n' +
-    '4️⃣ Address and the phone number to show\n\n' +
-    'Your first version will be ready in 2–3 days. Let\'s get you online! 🚀',
+    'Wonderful, {name}! 🎉 Thank you for trusting us.\n\n' +
+    '*Please send:*\n' +
+    '1️⃣ Logo (if any)\n' +
+    '2️⃣ A few photos\n' +
+    '3️⃣ Services & timings\n' +
+    '4️⃣ Address & phone to show\n\n' +
+    'First version ready in *2–3 days*! 🚀',
 };
 export type SettingKey = keyof typeof DEFAULT_SETTINGS;
 export type Settings = Record<SettingKey, string>;
@@ -163,7 +166,8 @@ export async function saveSettings(values: Partial<Settings>): Promise<void> {
 // ------------------------------------------------------------------ message kinds
 
 export type MessageKind = Exclude<SettingKey, 'dailySend' | 'minScore' | 'fu1Days' | 'fu2Days' | 'finalDays' | 'closeAfterDays' |
-  'keepNurture' | 'dealCheck1Days' | 'dealCheck2Days' | 'nurtureDays' | 'price' | 'starterPrice' | 'myName' | 'openLine'>;
+  'keepNurture' | 'dealCheck1Days' | 'dealCheck2Days' | 'nurtureDays' | 'price' | 'starterPrice' | 'myName' | 'openLine' |
+  'sender1Name' | 'sender1Phone' | 'sender1Daily' | 'sender2Name' | 'sender2Phone' | 'sender2Daily' | 'myCity'>;
 
 /** Every message you can send, what it's called, how many designs it includes by default,
  *  and the stage the lead moves to once it's sent. */
@@ -175,7 +179,14 @@ export const MESSAGES: Record<MessageKind, { label: string; designs: number; adv
   more_designs: { label: 'Send designs', designs: 3, advance: 'interested' },
   pricing: { label: 'Send pricing', designs: 0, advance: 'proposal' },
   call: { label: 'Reply to call request', designs: 0, advance: null },
+  meeting_video: { label: 'Meeting → video call', designs: 0, advance: null },
+  meeting_visit: { label: 'Meeting → I\'ll visit', designs: 0, advance: null },
+  meeting_confirm: { label: 'Call confirmed (time + link)', designs: 0, advance: null },
+  meeting_reminder: { label: 'Call reminder', designs: 0, advance: null },
+  meeting_missed: { label: 'They didn\'t join the call', designs: 3, advance: null },
+  correction_thanks: { label: 'Thanks for the correction', designs: 0, advance: null },
   changes: { label: 'Changes requested', designs: 3, advance: 'interested' },
+  introduction: { label: 'Introduce yourself', designs: 1, advance: null },
   portfolio: { label: 'Send portfolio', designs: 3, advance: 'interested' },
   timeline: { label: 'Send timeline', designs: 0, advance: null },
   follow_up: { label: 'Check in', designs: 0, advance: null },
@@ -185,6 +196,24 @@ export const MESSAGES: Record<MessageKind, { label: string; designs: number; adv
 };
 const SEQUENCE: MessageKind[] = ['followup_1', 'followup_2', 'followup_final'];
 const IN_DEAL = ['replied', 'interested', 'proposal'];
+
+// Doctors, dentists, clinics… are greeted as "Doctor" in the meeting messages.
+const MEDICAL_WORDS = /dent|clinic|doctor|hospital|physician|eye|ophthal|child|paediat|pediat|gyn|skin|derma|plastic|physio|diet|nutrition|medical/i;
+
+/** Is the lead where you are? (Your "my city" setting matches their state or city.) */
+export function isNearby(lead: Pick<Lead, 'state' | 'city'>, s: Settings): boolean {
+  const mine = (s.myCity || '').trim().toLowerCase();
+  if (!mine) return false;
+  return [lead.state, lead.city].some((v) => (v || '').trim().toLowerCase() === mine || (v || '').toLowerCase().includes(mine));
+}
+
+/** "Sunday, 4 October at 5:30 PM" (India time). */
+export function meetingTime(iso: string): string {
+  const d = new Date(iso);
+  const day = d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', day: 'numeric', month: 'long' });
+  const time = d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase();
+  return `${day} at ${time}`;
+}
 
 const days = (v: string, fallback: number) => {
   const n = parseInt(v, 10);
@@ -228,7 +257,9 @@ export async function autoClose(): Promise<number> {
 export const INTENTS: Record<string, { label: string; kind: MessageKind; action: string }> = {
   price: { label: 'Asked the price', kind: 'pricing', action: 'Send pricing' },
   call: { label: 'Wants a call', kind: 'call', action: 'Call them' },
+  meeting: { label: 'Wants a meeting', kind: 'meeting_video', action: 'Reply: offer a video call (or visit if nearby)' },
   changes: { label: 'Wants changes', kind: 'changes', action: 'Send updated designs' },
+  who: { label: 'Asked who you are', kind: 'introduction', action: 'Introduce yourself' },
   portfolio: { label: 'Wants examples', kind: 'portfolio', action: 'Send portfolio' },
   timeline: { label: 'Asked how long', kind: 'timeline', action: 'Send timeline' },
   thinking: { label: 'Thinking / later', kind: 'not_now', action: 'Reply and follow up later' },
@@ -243,7 +274,9 @@ export function detectIntent(text: string): keyof typeof INTENTS {
   const t = ` ${(text || '').toLowerCase()} `;
   const has = (re: RegExp) => re.test(t);
   if (has(/not interested|no thanks|no thank|don'?t (message|contact)|stop|nahi chahiye|mat bhejo|not required|no need/)) return 'not_interested';
+  if (has(/introduc|who are you|who is this|who r u|your name|which company|about you|aap kaun|kaun ho|kaun hai|apna parichay|parichay/)) return 'who';
   if (has(/price|cost|charges?|rate|how much|kitna|kitne|budget|fees?|amount|package/)) return 'price';
+  if (has(/\bmeet(ing)?\b|\bcome (to|for|and)\b|\bvisit\b|milne|mil (lo|lete|sakte|ke)|aa jao|aaiye|in person/)) return 'meeting';
   if (has(/\bcall\b|phone|ring me|baat kar|call kar|contact me/)) return 'call';
   if (has(/change|modify|edit|different colou?r|logo|photo|customi[sz]e|badal/)) return 'changes';
   if (has(/portfolio|example|sample|previous work|your work|clients?/)) return 'portfolio';
@@ -329,10 +362,14 @@ export function competitorLine(lead: Lead): string {
   const top = c.top.filter(hasSite).slice(0, 2);
   if (top.length && lead.search_rank && lead.search_rank > 3) {
     const names = top.map((x) => `${shortName(x.name)}${x.rating ? ` (★${x.rating})` : ''}`).join(' and ');
-    return `When people search “${c.search || 'for you'}”, ${names} show up first — and they already have websites.\n\n`;
+    return `${names} show up first when people search “${c.search || 'for you'}” — and they already have websites.`;
   }
-  if (near) return `${shortName(near.name)}, ${near.km} km from you, already has a website — let's make sure people find you too.\n\n`;
-  return '';
+  if (near) return `${shortName(near.name)}, ${near.km} km from you, already has one.`;
+  const any = [...c.top, ...c.nearby].filter(hasSite).slice(0, 2);
+  if (any.length) return `${any.map((x) => shortName(x.name)).join(' and ')} near you already ${any.length > 1 ? 'have websites' : 'has one'}.`;
+  // Nobody nearby has a website yet — that's the hook.
+  const trade = (lead.category_label || lead.category || '').trim().toLowerCase() || 'business';
+  return `You could be the first ${trade}${lead.city ? ` in ${lead.city}` : ''} with a professional website — so new customers find you before anyone else.`;
 }
 
 /** Competitors near the lead that have a website — top of the map search first, then the nearest —
@@ -346,7 +383,7 @@ export function competitorLinks(lead: Lead, max = 3): string {
     const where = x.rank && x.rank <= 3 ? `#${x.rank} when people search “${c.search || 'nearby'}”` : x.km != null ? `${x.km} km from you` : '';
     const rating = x.rating ? `★${x.rating}${x.reviews ? ` (${Number(x.reviews).toLocaleString('en-IN')} reviews)` : ''}` : '';
     const link = siteUrl(x);
-    return `• ${shortName(x.name)}${[rating, where].filter(Boolean).length ? ` — ${[rating, where].filter(Boolean).join(', ')}` : ''}${link ? `\n  ${link}` : ''}`;
+    return `• *${shortName(x.name).replace(/\*/g, '')}*${[rating, where].filter(Boolean).length ? ` — ${[rating, where].filter(Boolean).join(', ')}` : ''}${link ? `\n  ${link}` : ''}`;
   }).join('\n');
 }
 
@@ -358,23 +395,31 @@ export function messageTemplate(kind: MessageKind, lead: Lead, settings: Setting
   const values: Record<string, string> = {
     name, city, area: city || 'your area',
     in_city: city && !name.toLowerCase().includes(city.toLowerCase()) ? ` in ${city}` : '',
-    pitch: !lead.website ? "noticed you don't have a website yet." : 'had a look at your website.',
+    pitch: !lead.website ? "noticed you don't have a website yet." : 'had a look at your website — it could bring you a lot more enquiries.',
     competitor_line: competitorLine(lead),
     // The list with links when we have it; otherwise the one-sentence version (older leads).
     competitor_links: competitorLinks(lead)
-      ? `Businesses near you that customers already find online:\n${competitorLinks(lead)}\n\n`
-      : competitorLine(lead),
+      ? `*Businesses near you that customers already find online:*\n${competitorLinks(lead)}\n\n`
+      : competitorLine(lead) && `${competitorLine(lead)}\n\n`,
     demo_link: designLinks(lead)[0]?.url || lead.demo_link || SITE,
     price: settings.price || '[your price]',
+    dear: MEDICAL_WORDS.test(`${lead.category || ''} ${lead.category_label || ''}`) ? 'Doctor' : name,
+    business_word: MEDICAL_WORDS.test(`${lead.category || ''} ${lead.category_label || ''}`) ? 'clinic' : 'business',
+    their_city: city || 'your city',
+    my_city: settings.myCity || 'Punjab',
+    meeting_time: lead.meeting_at ? meetingTime(lead.meeting_at) : '[call time]',
+    meeting_link: lead.meeting_link || '[meeting link]',
     starter_price: settings.starterPrice || settings.price || '[price]',
     my_name: settings.myName || 'W3Tech',
+    video_link: `${SITE}/intro`,
     open_line: settings.openLine || DEFAULT_SETTINGS.openLine,
   };
-  return (settings[kind] || DEFAULT_SETTINGS[kind]).replace(/\{(\w+)\}/g, (m, k) => (k in values ? values[k] : m)).trim();
+  return (settings[kind] || DEFAULT_SETTINGS[kind]).replace(/\{(\w+)\}/g, (m, k) => (k in values ? values[k] : m))
+    .replace(/ +\n/g, '\n').trim();
 }
 
 export function withDesigns(template: string, lead: Lead, ids: string[]): string {
-  const links = designLinks(lead).filter((d) => ids.includes(d.id)).map((d) => `• ${d.name}: ${d.url}`).join('\n');
+  const links = designLinks(lead).filter((d) => ids.includes(d.id)).map((d) => `• *${d.name}*: ${d.url}`).join('\n');
   return template.replace('{design_links}', links || designLinks(lead)[0]?.url || lead.demo_link || SITE);
 }
 
@@ -422,6 +467,7 @@ export type NextAction = {
   call?: boolean;       // show a "Call now" button
   nurture?: boolean;    // offer "Move to nurture"
   addReply?: boolean;   // their reply isn't saved yet: ask for it
+  meetingCheck?: boolean; // the call time has passed: did it happen?
 };
 
 const ago = (iso: string | null) => {
@@ -442,6 +488,20 @@ export function nextAction(lead: Lead, e: Record<string, Engagement> | undefined
   const seen = recent?.[1];
   const step = lead.follow_up_count || 0;
 
+  // A scheduled call comes first: remind them before, ask how it went after.
+  if (lead.meeting_at) {
+    const at = Date.parse(lead.meeting_at);
+    if (now >= at + 15 * 60_000) {
+      return { title: 'How did the call go?', urgent: true, kind: 'meeting_missed', meetingCheck: true,
+               situation: `Call was at ${meetingTime(lead.meeting_at)} — mark it done, or send “they didn't join”` };
+    }
+    if (now >= at - 2 * 3600_000 && !lead.meeting_reminded) {
+      return { title: 'Send call reminder', urgent: true, kind: 'meeting_reminder',
+               situation: `Call at ${meetingTime(lead.meeting_at)}${lead.meeting_link ? '' : ' · add the meeting link first'}` };
+    }
+    return null; // call is booked: nothing to chase until then
+  }
+
   switch (lead.status) {
     case 'waiting_reply': {
       if (openedSince && seen) {
@@ -459,7 +519,10 @@ export function nextAction(lead: Lead, e: Record<string, Engagement> | undefined
       const intent = INTENTS[lead.intent || ''] || null;
       const answered = lead.last_contacted_at && lead.last_reply_at && Date.parse(lead.last_contacted_at) > Date.parse(lead.last_reply_at);
       if (!answered && intent) {
-        return { title: intent.action, situation: `${intent.label}: “${(lead.last_reply || '').slice(0, 80)}”`, kind: intent.kind,
+        // A meeting nearby (their state or city is where you are): offer to visit instead of a video call.
+        const visit = lead.intent === 'meeting' && isNearby(lead, s);
+        return { title: visit ? 'Reply: confirm the meeting (nearby — you can visit)' : intent.action,
+                 situation: `${intent.label}: “${(lead.last_reply || '').slice(0, 80)}”`, kind: visit ? 'meeting_visit' : intent.kind,
                  urgent: true, call: lead.intent === 'call' };
       }
       if (!answered && lead.last_reply) {
@@ -497,6 +560,7 @@ export async function actionList(): Promise<{ lead: Lead; action: NextAction; e:
     AND (next_action_at IS NULL OR next_action_at <= strftime('%Y-%m-%dT%H:%M:%fZ','now')
          OR (last_reply_at IS NOT NULL AND (last_contacted_at IS NULL OR last_reply_at > last_contacted_at))
          OR (status = 'replied' AND last_reply IS NULL AND intent IS NULL)
+         OR (meeting_at IS NOT NULL AND meeting_at <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+2 hours'))
          OR EXISTS (SELECT 1 FROM demo_events e WHERE e.lead_id = l.id AND e.at > COALESCE(l.last_contacted_at, '')))
     ORDER BY updated_at DESC LIMIT 300`);
   const leads = res.rows as unknown as Lead[];
@@ -517,30 +581,62 @@ function istDayStart(): string {
   return new Date(ist.getTime() - 5.5 * 3600_000).toISOString();
 }
 
-export async function sentToday(): Promise<number> {
+export type Sender = { id: string; name: string; phone: string; daily: number; sent: number; left: number };
+
+/** Your WhatsApp numbers with today's first messages sent and what's left of each daily limit. */
+export async function senders(settings?: Settings): Promise<Sender[]> {
+  const s = settings || (await getSettings());
   const conn = await getDb();
-  const r = await conn.execute({ sql: "SELECT COUNT(*) n FROM lead_messages WHERE dir = 'out' AND kind = 'first' AND at >= ?", args: [istDayStart()] });
-  return Number(r.rows[0].n);
+  const rows = await conn.execute({
+    sql: `SELECT COALESCE(sender, 'one') sender, COUNT(*) n FROM lead_messages WHERE dir = 'out' AND kind = 'first' AND at >= ?
+          GROUP BY COALESCE(sender, 'one')`,
+    args: [istDayStart()],
+  });
+  const sent: Record<string, number> = {};
+  for (const r of rows.rows) sent[String(r.sender)] = Number(r.n);
+  return [
+    { id: 'one', name: s.sender1Name || 'One', phone: s.sender1Phone, daily: days(s.sender1Daily, 20) },
+    { id: 'two', name: s.sender2Name || 'Two', phone: s.sender2Phone, daily: days(s.sender2Daily, 20) },
+  ].filter((x) => (x.phone || '').replace(/\D/g, '').length >= 8)
+    .map((x) => ({ ...x, sent: sent[x.id] || 0, left: Math.max(0, x.daily - (sent[x.id] || 0)) }));
 }
 
-export async function todayList(): Promise<{ leads: Lead[]; sent: number; limit: number; available: number }> {
+export const senderLabel = (list: Sender[], id: string | null | undefined) => {
+  const x = list.find((y) => y.id === (id || 'one'));
+  return x ? `${x.name} (${x.phone})` : id || '';
+};
+
+/** The number to use: the lead's own number for follow-ups; for a new lead, the first with room left today. */
+export function pickSender(list: Sender[], lead: Pick<Lead, 'sender'>): string {
+  if (lead.sender && list.some((x) => x.id === lead.sender)) return lead.sender;
+  return (list.find((x) => x.left > 0) || list[0])?.id || 'one';
+}
+
+export async function sentToday(): Promise<number> {
+  return (await senders()).reduce((n, x) => n + x.sent, 0);
+}
+
+export async function todayList(): Promise<{ leads: Lead[]; sent: number; limit: number; available: number; senders: Sender[] }> {
   const s = await getSettings();
   const conn = await getDb();
-  const limit = Math.max(0, Math.min(200, parseInt(s.dailySend, 10) || 50));
-  const sent = await sentToday();
+  const list = await senders(s);
+  const limit = list.reduce((n, x) => n + x.daily, 0);
+  const sent = list.reduce((n, x) => n + x.sent, 0);
+  const room = list.reduce((n, x) => n + x.left, 0);
   const where = `archived = 0 AND status = 'new' AND whatsapp IS NOT NULL AND whatsapp <> '' AND COALESCE(score, 0) >= ?`;
   const minScore = parseInt(s.minScore, 10) || 0;
   const available = Number((await conn.execute({ sql: `SELECT COUNT(*) n FROM leads WHERE ${where}`, args: [minScore] })).rows[0].n);
   const res = await conn.execute({
     sql: `SELECT * FROM leads WHERE ${where} ORDER BY score DESC, COALESCE(review_count, 0) DESC, created_at ASC LIMIT ?`,
-    args: [minScore, Math.max(0, limit - sent)],
+    args: [minScore, room],
   });
-  return { leads: res.rows as unknown as Lead[], sent, limit, available };
+  return { leads: res.rows as unknown as Lead[], sent, limit, available, senders: list };
 }
 
 // ------------------------------------------------------------------ recording what happened
 
-export type Message = { id: number; lead_id: string; at: string; dir: 'in' | 'out'; kind: string | null; text: string; demos: string | null };
+export type Message = { id: number; lead_id: string; at: string; dir: 'in' | 'out'; kind: string | null; text: string; demos: string | null;
+  sender: string | null };
 
 export async function messagesFor(leadIds: string[]): Promise<Record<string, Message[]>> {
   if (!leadIds.length) return {};
@@ -558,12 +654,18 @@ const RANK: Record<string, number> = { new: 0, waiting_reply: 1, nurture: 1, no_
 
 /** One action, everything updated: message log, stage, follow-up count, last contact,
  *  next follow-up date, designs sent and the timeline. */
-export async function recordSent(id: string, text: string, kind: MessageKind, demos: string[]): Promise<void> {
+export async function recordSent(id: string, text: string, kind: MessageKind, demos: string[], senderId?: string): Promise<void> {
   const conn = await getDb();
   const cur = await conn.execute({ sql: 'SELECT status, follow_up_count, demos_sent FROM leads WHERE id = ?', args: [id] });
   if (!cur.rows.length) throw new Error('Lead not found');
   const row = cur.rows[0];
   const s = await getSettings();
+  const list = await senders(s);
+  const sender = list.find((x) => x.id === senderId) || list[0];
+  if (!sender) throw new Error('Add your WhatsApp numbers in Settings first.');
+  if (kind === 'first' && sender.left <= 0) {
+    throw new Error(`${sender.name} (${sender.phone}) has reached today's limit of ${sender.daily} — send from another number.`);
+  }
   const now = new Date();
   const status = String(row.status);
   const advance = MESSAGES[kind]?.advance ?? null;
@@ -593,18 +695,20 @@ export async function recordSent(id: string, text: string, kind: MessageKind, de
   }
   const allDemos = [...new Set([...jsonList(row.demos_sent as string | null), ...demos])];
   await conn.execute({
-    sql: "INSERT INTO lead_messages (lead_id, dir, kind, text, demos) VALUES (?, 'out', ?, ?, ?)",
-    args: [id, kind, text.slice(0, 5000), demos.length ? JSON.stringify(demos) : null],
+    sql: "INSERT INTO lead_messages (lead_id, dir, kind, text, demos, sender) VALUES (?, 'out', ?, ?, ?, ?)",
+    args: [id, kind, text.slice(0, 5000), demos.length ? JSON.stringify(demos) : null, sender.id],
   });
   await conn.execute({
     sql: `UPDATE leads SET status = ?, last_message = ?, sent_at = COALESCE(sent_at, ?), last_contacted_at = ?, follow_up_count = ?,
-          next_action_at = ?, closing = ?, demos_sent = ?, updated_at = ? WHERE id = ?`,
+          next_action_at = ?, closing = ?, demos_sent = ?, sender = COALESCE(sender, ?), updated_at = ?,
+          meeting_reminded = CASE WHEN ? = 'meeting_reminder' THEN 1 ELSE meeting_reminded END,
+          meeting_at = CASE WHEN ? = 'meeting_missed' THEN NULL ELSE meeting_at END WHERE id = ?`,
     args: [finalStatus, text.slice(0, 3000), now.toISOString(), now.toISOString(), followUps, nextAt, closing, JSON.stringify(allDemos),
-           now.toISOString(), id],
+           sender.id, now.toISOString(), kind, kind, id],
   });
   await conn.execute({
     sql: "INSERT INTO lead_history (lead_id, action, detail, source) VALUES (?, 'message', ?, 'dashboard')",
-    args: [id, `${MESSAGES[kind]?.label || kind}${demos.length ? ` · designs: ${demos.map((d) => getDesign(d)?.name || d).join(', ')}` : ''}`],
+    args: [id, `${MESSAGES[kind]?.label || kind} · from ${sender.name} (${sender.phone})${demos.length ? ` · designs: ${demos.map((d) => getDesign(d)?.name || d).join(', ')}` : ''}`],
   });
 }
 
@@ -640,6 +744,38 @@ export async function scheduleFollowUp(id: string, days: number): Promise<void> 
   await conn.execute({
     sql: "INSERT INTO lead_history (lead_id, action, detail, source) VALUES (?, 'scheduled', ?, 'dashboard')",
     args: [id, `Follow up in ${days} day${days === 1 ? '' : 's'}`],
+  });
+}
+
+/** Book a call: date/time (India time, from the form) and the link. */
+export async function setMeeting(id: string, localDateTime: string, link: string): Promise<void> {
+  const m = localDateTime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!m) throw new Error('Pick a date and time');
+  const at = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00+05:30`).toISOString();
+  const cleanLink = /^https?:\/\/\S+$/.test(link.trim()) ? link.trim().slice(0, 300) : null;
+  const conn = await getDb();
+  await conn.execute({
+    sql: `UPDATE leads SET meeting_at = ?, meeting_link = ?, meeting_reminded = 0, closing = 0, next_action_at = ?, updated_at = ? WHERE id = ?`,
+    args: [at, cleanLink, at, new Date().toISOString(), id],
+  });
+  await conn.execute({
+    sql: "INSERT INTO lead_history (lead_id, action, detail, source) VALUES (?, 'meeting', ?, 'dashboard')",
+    args: [id, `Call booked for ${meetingTime(at)}${cleanLink ? ` · ${cleanLink}` : ''}`],
+  });
+}
+
+/** The call happened: clear it and come back to the lead tomorrow (send the next step from the lead page). */
+export async function meetingDone(id: string, note: string): Promise<void> {
+  const conn = await getDb();
+  const now = new Date();
+  await conn.execute({
+    sql: `UPDATE leads SET meeting_at = NULL, meeting_reminded = 0, intent = 'interested', status = CASE WHEN status IN ('new','waiting_reply','replied','no_reply','nurture') THEN 'interested' ELSE status END,
+          last_reply_at = NULL, next_action_at = ?, updated_at = ? WHERE id = ?`,
+    args: [new Date(now.getTime() + DAY).toISOString(), now.toISOString(), id],
+  });
+  await conn.execute({
+    sql: "INSERT INTO lead_history (lead_id, action, detail, source) VALUES (?, 'meeting', ?, 'dashboard')",
+    args: [id, `Call done${note ? ` — ${note.slice(0, 300)}` : ''}`],
   });
 }
 
@@ -710,4 +846,18 @@ export async function repliedLeads(limit = 60): Promise<{ lead: Lead; action: Ne
   const leads = res.rows as unknown as Lead[];
   const eng = await engagement(leads.map((l) => l.id));
   return leads.map((lead) => ({ lead, action: nextAction(lead, eng[lead.id], s) }));
+}
+
+/** Today's list in order: the first leads go to the first number until its daily limit is used up,
+ *  then to the next one — so the switch to number Two happens by itself. */
+export function assignSenders(list: Sender[], count: number): { id: string; switched: boolean }[] {
+  const left = list.map((x) => x.left);
+  const out: { id: string; switched: boolean }[] = [];
+  for (let i = 0; i < count; i++) {
+    const at = left.findIndex((n) => n > 0);
+    if (at < 0) break;
+    left[at]--;
+    out.push({ id: list[at].id, switched: at > 0 });
+  }
+  return out;
 }

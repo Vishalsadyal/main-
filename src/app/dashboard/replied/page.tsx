@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireLogin } from '@/lib/dashboard-auth';
-import { funnel, getSettings, INTENTS, repliedLeads, shortName, waitingForReply } from '@/lib/outreach';
+import { funnel, getSettings, INTENTS, repliedLeads, senderLabel, senders as getSenders, shortName, waitingForReply } from '@/lib/outreach';
 import { StatusBadge } from '../StatusBadge';
 import { saveReply } from '../actions';
 
@@ -12,7 +12,7 @@ export default async function RepliedPage({ searchParams }: { searchParams: Prom
   await requireLogin();
   const sp = await searchParams;
   const q = String(Array.isArray(sp.q) ? sp.q[0] : sp.q || '').trim();
-  const [steps, waiting, settings, replied] = await Promise.all([funnel(), waitingForReply(q), getSettings(), repliedLeads()]);
+  const [steps, waiting, settings, replied, senderList] = await Promise.all([funnel(), waitingForReply(q), getSettings(), repliedLeads(), getSenders()]);
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
   const top = Math.max(1, steps[0].count);
 
@@ -60,7 +60,7 @@ export default async function RepliedPage({ searchParams }: { searchParams: Prom
                     </form>
                   </details>
                 )}
-                <p className="text-xs text-slate-500">{[l.city, l.phone, when(l.last_reply_at)].filter(Boolean).join(' · ')}</p>
+                <p className="text-xs text-slate-500">{[l.city, l.phone, when(l.last_reply_at), l.sender && `on ${senderLabel(senderList, l.sender)}`].filter(Boolean).join(' · ')}</p>
               </div>
               <div className="flex flex-col items-end gap-1.5">
                 {action ? <span className="text-sm font-semibold">{action.urgent ? '🔥 ' : ''}{action.title}</span> : <span className="text-sm text-slate-400">Nothing due</span>}

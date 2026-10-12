@@ -29,9 +29,9 @@
   <main>
     <section>
       <h2>Leads dashboard</h2>
-      <p>“Push to dashboard” (panel → Leads) sends your leads to the W3Tech leads dashboard on each site below — a site
-        that can't be reached is skipped and tried next time. Duplicates and incomplete leads are left out; nothing is
-        ever deleted there.</p>
+      <p>Leads are saved only in the W3Tech leads dashboard — the extension keeps none. After every search the results go to
+        each site below; a site that can't be reached gets them later from a small outbox. The dashboard skips duplicates
+        and never deletes anything.</p>
       <label>API key (LEADS_API_KEY of the site) <input id="dashboardKey" type="password" autocomplete="off"></label>
       <label>Sites, one per line <textarea id="dashboardSites" style="min-height:70px"></textarea></label>
     </section>
@@ -49,16 +49,10 @@
       <h2>Speed</h2>
       <p>A pause between searches and a daily cap keep Bing from blocking you. If Bing shows a CAPTCHA the hunt pauses by itself.</p>
       <div class="grid">
-        <label>Pause from (s) <input id="delayMin" type="number" min="3" max="300"></label>
-        <label>to (s) <input id="delayMax" type="number" min="3" max="600"></label>
+        <label>Pause from (s) <input id="delayMin" type="number" min="1" max="300"></label>
+        <label>to (s) <input id="delayMax" type="number" min="1" max="600"></label>
         <label>Searches per day <input id="dailyLimit" type="number" min="1" max="2000"></label>
       </div>
-    </section>
-
-    <section>
-      <h2>Stored leads</h2>
-      <p id="count">…</p>
-      <div><button class="danger" id="clear" type="button">Delete all hunt leads from this browser</button></div>
     </section>
 
     <div class="bar"><button class="primary" id="save" type="button">Save</button><span id="msg"></span></div>

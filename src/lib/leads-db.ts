@@ -68,6 +68,10 @@ export type Lead = {
   intent: string | null;         // what their last reply asked for (price, call, changes…)
   demos_sent: string | null;     // JSON list of design ids already sent
   closing: number | null;        // 1 = the follow-up plan is over; the lead closes at next_action_at
+  sender: string | null;         // which of your WhatsApp numbers contacted them ('one', 'two')
+  meeting_at: string | null;     // scheduled call / meeting (UTC ISO)
+  meeting_link: string | null;   // Google Meet / Zoom link
+  meeting_reminded: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -206,11 +210,17 @@ async function migrate(conn: Client): Promise<void> {
   const cols = new Set((await conn.execute('PRAGMA table_info(leads)')).rows.map((r) => String(r.name)));
   for (const [col, type] of [['phone_key', 'TEXT'], ['name_key', 'TEXT'], ['search_rank', 'INTEGER'],
                              ['competitors', 'TEXT'], ['last_reply', 'TEXT'], ['last_reply_at', 'TEXT'], ['follow_up_count', 'INTEGER'],
-                             ['last_contacted_at', 'TEXT'], ['next_action_at', 'TEXT'], ['intent', 'TEXT'], ['demos_sent', 'TEXT'], ['closing', 'INTEGER']]) {
+                             ['last_contacted_at', 'TEXT'], ['next_action_at', 'TEXT'], ['intent', 'TEXT'], ['demos_sent', 'TEXT'], ['closing', 'INTEGER'], ['sender', 'TEXT'],
+                             ['meeting_at', 'TEXT'], ['meeting_link', 'TEXT'], ['meeting_reminded', 'INTEGER']]) {
     if (!cols.has(col)) await conn.execute(`ALTER TABLE leads ADD COLUMN ${col} ${type}`);
   }
   const msgCols = new Set((await conn.execute('PRAGMA table_info(lead_messages)')).rows.map((r) => String(r.name)));
   if (!msgCols.has('demos')) await conn.execute('ALTER TABLE lead_messages ADD COLUMN demos TEXT');
+  if (!msgCols.has('sender')) await conn.execute('ALTER TABLE lead_messages ADD COLUMN sender TEXT');
+  // Everything sent before there were two numbers went from number One. (Messages themselves can't be
+  // changed, so for them an empty sender is read as One.)
+  await conn.execute(`UPDATE leads SET sender = 'one' WHERE sender IS NULL AND (sent_at IS NOT NULL OR last_contacted_at IS NOT NULL
+    OR status IN ('waiting_reply','replied','interested','proposal','won','nurture','no_reply','not_interested'))`);
   await conn.batch([
     'CREATE INDEX IF NOT EXISTS leads_phone_key ON leads(phone_key)',
     'CREATE INDEX IF NOT EXISTS leads_name_key ON leads(name_key)',

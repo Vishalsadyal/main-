@@ -44,8 +44,8 @@ var LEAD_COLUMNS = ["lead_id", "business_name", "category", "phone", "whatsapp",
 var HUNT_COLUMNS = ["key", "business_name", "listing_title", "category", "phone", "whatsapp", "website", "address",
   "city", "state", "country", "score", "reasons", "status", "maps_url", "demo_link", "hunt", "search", "found_at",
   "last_message", "sent_at", "updated_at", "rating", "reviews", "rating_source", "priority",
-  "last_reply", "notes", "archived", "search_rank", "competitors", "dashboard_updated_at"];
-var MESSAGE_COLUMNS = ["id", "lead_id", "business_name", "at", "direction", "kind", "text"];
+  "last_reply", "notes", "archived", "search_rank", "competitors", "dashboard_updated_at", "whatsapp_used"];
+var MESSAGE_COLUMNS = ["id", "lead_id", "business_name", "at", "direction", "kind", "text", "sender"];
 var EVENT_TYPES = ["view", "call", "whatsapp", "email", "cta_header", "cta_hero", "cta_appointment", "cta_contact",
   "section", "scroll", "leave"];
 // Visitor details the website may send with an event, and their max lengths.

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireLogin } from '@/lib/dashboard-auth';
-import { competitors, getSettings, shortName, todayList } from '@/lib/outreach';
+import { assignSenders, competitors, getSettings, shortName, todayList } from '@/lib/outreach';
 import MessageCard from '../MessageCard';
 import { skipLead } from '../actions';
 import { cardFor } from '../card';
@@ -9,8 +9,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function TodayPage() {
   await requireLogin();
-  const [{ leads, sent, limit, available }, settings] = await Promise.all([todayList(), getSettings()]);
+  const [{ leads, sent, limit, available, senders }, settings] = await Promise.all([todayList(), getSettings()]);
   const pct = limit ? Math.min(100, Math.round((sent / limit) * 100)) : 0;
+  const plan = assignSenders(senders, leads.length);
 
   return (
     <div className="flex flex-col gap-5">
@@ -20,6 +21,13 @@ export default async function TodayPage() {
           <span className="text-sm text-slate-500">{available.toLocaleString('en-IN')} good leads waiting · best score first</span>
         </div>
         <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${pct}%` }} /></div>
+        <div className="mt-3 flex flex-wrap gap-2 text-sm">
+          {senders.map((x) => (
+            <span key={x.id} className={`rounded-full px-3 py-1.5 font-semibold ring-1 ${x.left > 0 ? 'bg-green-50 text-green-800 ring-green-200' : 'bg-slate-100 text-slate-500 ring-slate-200'}`}>
+              {x.name} · {x.phone}: {x.sent}/{x.daily}{x.left > 0 ? '' : ' — full'}
+            </span>
+          ))}
+        </div>
         <p className="mt-3 text-sm text-slate-600">
           Pick the design(s), check the message, tap <b>Open WhatsApp</b> (one WhatsApp Web tab, text filled in), press send
           there, then <b>✓ Sent</b> here. Follow-ups come back on <Link href="/dashboard/actions" className="text-blue-700">Action required</Link> by themselves.
@@ -32,10 +40,12 @@ export default async function TodayPage() {
         </p>
       )}
 
-      {leads.map((l) => {
+      {leads.map((l, i) => {
         const c = competitors(l);
         const withSite = [...c.top, ...c.nearby].filter((x) => Boolean(x.website));
-        const { options, designs } = cardFor(l, settings, ['first']);
+        const { options, designs, senders: cardSenders } = cardFor(l, settings, ['first'], undefined, senders);
+        const assigned = plan[i];
+        const first = senders[0];
         return (
           <article key={l.id} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -55,7 +65,13 @@ export default async function TodayPage() {
               </p>
             )}
             <div className="mt-4">
-              <MessageCard id={l.id} phone={l.whatsapp} options={options} initialKind="first" designs={designs} />
+              {assigned?.switched && first && (
+                <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
+                  {first.name}&apos;s remaining messages today go to the leads above → this one is sent from <b>{senders.find((x) => x.id === assigned.id)?.name} ({senders.find((x) => x.id === assigned.id)?.phone})</b>.
+                </p>
+              )}
+              <MessageCard id={l.id} phone={l.whatsapp} options={options} initialKind="first" designs={designs} senders={cardSenders}
+                defaultSender={assigned?.id || cardSenders[0]?.id} />
             </div>
             <form action={skipLead} className="mt-2">
               <input type="hidden" name="id" value={l.id} />

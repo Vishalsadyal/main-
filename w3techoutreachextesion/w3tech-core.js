@@ -50,8 +50,8 @@
 
   const DEFAULT_SETTINGS = {
     hotScore: 60,           // leads at/above this go to the Send list
-    delayMin: 8,            // seconds between searches (random between min and max)
-    delayMax: 20,
+    delayMin: 1,            // seconds between searches (random between min and max)
+    delayMax: 1,
     dailyLimit: 300,        // searches per day
     dailySend: 50,          // WhatsApp messages per day (today's queue)
     sendGapMin: 3,          // seconds before the next chat opens (random between min and max)
@@ -240,7 +240,9 @@
       rating: e.rating == null ? null : e.rating, reviews: e.reviewCount || 0, ratingSource: e.ratingSource || "",
       km: distanceKm(entity, e) });
     const others = entities.map(brief).filter((c, i) => entities[i].id !== entity.id);
-    const nearby = others.filter((c) => c.km != null && c.rank > 3).sort((a, b) => a.km - b.km).slice(0, 3);
+    // Nearby: the closest ones that have a website first (they're what the messages link to), then the closest others.
+    const close = others.filter((c) => c.km != null && c.rank > 3).sort((a, b) => a.km - b.km);
+    const nearby = [...close.filter((c) => c.website), ...close.filter((c) => !c.website)].slice(0, 3).sort((a, b) => a.km - b.km);
     return { rank: entities.findIndex((e) => e.id === entity.id) + 1, top: others.filter((c) => c.rank <= 3), nearby };
   }
 

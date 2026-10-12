@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 type Search = Record<string, string | string[] | undefined>;
 
-const PLACEHOLDERS = '{name} {city} {area} {in_city} {pitch} {competitor_line} {competitor_links} {design_links} {demo_link} {price} {starter_price} {my_name} {open_line}';
+const PLACEHOLDERS = '{name} {city} {area} {in_city} {pitch} {competitor_line} {competitor_links} {design_links} {demo_link} {price} {starter_price} {my_name} {open_line} {my_city} {their_city} {dear} {business_word}';
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<Search> }) {
   await requireLogin();
@@ -50,13 +50,26 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </section>
 
       <form action={saveSettingsAction} className="flex flex-col gap-5">
+        <section className="grid gap-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:grid-cols-3">
+          <h2 className="text-lg font-semibold sm:col-span-3">Your WhatsApp numbers</h2>
+          <p className="text-sm text-slate-600 sm:col-span-3">Each number has its own daily limit for first messages — when one is full, send from
+            the other. Follow-ups go from the number that first contacted the lead. WhatsApp Web works with one number per browser,
+            so keep the second number logged in in another browser or Chrome profile. Leave a number empty to stop using it.</p>
+          {field('sender1Name', 'Number 1 — name')}
+          {field('sender1Phone', 'Number 1 — phone')}
+          {field('sender1Daily', 'Number 1 — first messages per day', 'number', { min: 0, max: 200 })}
+          {field('sender2Name', 'Number 2 — name')}
+          {field('sender2Phone', 'Number 2 — phone')}
+          {field('sender2Daily', 'Number 2 — first messages per day', 'number', { min: 0, max: 200 })}
+        </section>
+
         <section className="grid gap-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:grid-cols-2">
           <h2 className="text-lg font-semibold sm:col-span-2">Sending &amp; follow-ups</h2>
-          {field('dailySend', 'First messages per day', 'number', { min: 1, max: 200 })}
           {field('minScore', "Minimum score for Today's list", 'number', { min: 0, max: 100 })}
           {field('price', 'Your website price ({price})', 'text', { placeholder: 'e.g. ₹14,999' })}
           {field('starterPrice', 'Budget price for the final follow-up ({starter_price}) — empty = same as price', 'text', { placeholder: 'e.g. ₹5,999' })}
           {field('myName', 'Your name / business ({my_name})')}
+          {field('myCity', 'Where you are ({my_city}) — for the meeting messages')}
           <div className="sm:col-span-2">{field('openLine', '“Feel free to talk” line ({open_line}) — used in most messages')}</div>
         </section>
 

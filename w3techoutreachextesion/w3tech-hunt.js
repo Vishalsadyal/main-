@@ -235,16 +235,16 @@
       <p class="muted small">${esc(h.country)} · ${fmt(h.towns)} towns over ${fmt(h.minPop)} · ${esc(h.terms.join(", "))}</p>
       ${h.error ? `<p class="err">${esc(h.error)}</p>` : ""}
       <div class="bar"><span style="width:${h.pct}%"></span></div>
-      <p class="muted small">${fmt(h.done)} of ${fmt(h.total)} searches (${h.pct}%)${h.failed ? ` · ${h.failed} skipped after errors` : ""}</p>
+      <p class="muted small">${fmt(h.done)} of ${fmt(h.total - (h.skipped || 0))} searches (${h.pct}%)${h.skipped ? ` · ${fmt(h.skipped)} already on the dashboard, skipped` : ""}${h.failed ? ` · ${h.failed} skipped after errors` : ""}</p>
       ${now ? `<p class="now">${now}</p>` : ""}
       ${h.status === "running" && !h.isHuntTab ? `<p class="note">The hunt runs in another Bing Maps tab. Keep that tab open (best in its own window). <button class="link here">Move it to this tab</button></p>` : ""}
       ${h.status === "running" && h.isHuntTab ? `<p class="note">This tab is doing the hunt — keep it open. Use another tab or window for other work.</p>` : ""}
       <div class="stats">
         <div><b>${fmt(h.found)}</b><small>found</small></div><div><b>${fmt(h.fresh)}</b><small>new leads</small></div>
-        <div><b>${fmt(h.hot)}</b><small>good leads</small></div><div><b>${fmt(st.total)}</b><small>all leads</small></div>
+        <div><b>${fmt(h.hot)}</b><small>good found</small></div><div><b>${fmt(h.skipped || 0)}</b><small>already done</small></div>
       </div>
       ${h.recent.length ? `<ul class="recent">${h.recent.map((r) => `<li><span>${esc(r.term)} · ${esc(r.city)}</span>
-        <small>${r.failed ? "skipped: " + esc(r.reason) : `${r.found} found · ${r.fresh} new${r.hot ? " · " + r.hot + " good" : ""}`}</small></li>`).join("")}</ul>` : ""}
+        <small>${r.failed ? "skipped: " + esc(r.reason) : `${r.found} found · ${r.fresh} new${r.hot ? " · " + r.hot + " good" : ""}${r.waiting ? " · in outbox" : ""}`}</small></li>`).join("")}</ul>` : ""}
       <p class="flash" hidden></p>
       <div class="actions">
         ${h.status === "running" ? `<button class="btn" data-act="pause">Pause</button>` : ""}
@@ -278,34 +278,27 @@
   // ------------------------------------------------------------ Leads tab
   async function loadLeads() {
     ui.view = "leads";
-    const res = await call("status");
-    if (!res.ok) return error(res.error);
-    const st = res.data.stats;
     body.innerHTML = `
-      <div class="stats">
-        <div><b>${fmt(st.total)}</b><small>leads</small></div><div><b>${fmt(st.noWebsite)}</b><small>no website</small></div>
-        <div><b>${fmt(st.hot)}</b><small>good</small></div><div><b>${fmt(st.sent)}</b><small>messaged</small></div>
-      </div>
-      <p class="flash" hidden></p>
       <h4>Leads dashboard</h4>
-      <div class="actions"><button class="btn primary push">⇪ Push to dashboard</button><button class="link pushall">Send all again</button></div>
+      <p class="muted small">The extension keeps no leads of its own. After every search the results go straight to the
+        dashboard's database, which skips businesses it already has — so a reset never creates duplicates. The dashboard sends
+        the WhatsApp messages and backs everything up to the Google Sheet.</p>
+      <p class="flash" hidden></p>
       <div class="push-report small"></div>
-      <div class="actions"><button class="btn csv">Download CSV</button></div>
-      <p class="muted small">Leads go to the dashboard automatically after each search; the dashboard sends WhatsApp
-        messages and backs everything up to the Google Sheet. Dashboard sites, API key and speed: <button class="link opts">Options</button>.</p>`;
-    body.querySelector(".csv").addEventListener("click", async () => {
-      const r = await call("export");
-      if (!r.ok) return flash(r.error);
-      const url = URL.createObjectURL(new Blob(["﻿" + r.data.csv], { type: "text/csv" }));
-      const a = document.createElement("a");
-      a.href = url; a.download = `w3tech-leads-${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-    });
+      <div class="actions"><button class="btn primary push">⇪ Send waiting leads now</button><button class="btn opendash">Open dashboard ↗</button></div>
+      <p class="muted small">Dashboard sites, API key and speed: <button class="link opts">Options</button>.</p>`;
     body.querySelector(".opts").addEventListener("click", () => call("open-options"));
-    body.querySelector(".push").addEventListener("click", () => push(false));
-    body.querySelector(".pushall").addEventListener("click", () => push(true));
+    body.querySelector(".push").addEventListener("click", push);
+    body.querySelector(".opendash").addEventListener("click", async () => {
+      const r = await call("push-status");
+      const site = r.ok && r.data.sites[0] ? r.data.sites[0].site : "http://localhost:3000";
+      window.open(`${site}/dashboard/actions`, "_blank", "noopener");
+    });
     showPushStatus();
+  }
+
+  function siteName(url) {
+    return url.replace(/^https?:\/\//, "").replace(/^www\./, "");
   }
 
   async function showPushStatus() {
@@ -313,34 +306,26 @@
     const r = await call("push-status");
     if (!box || !r.ok) return;
     if (!r.data.hasKey) {
-      box.innerHTML = `<p class="note">Add the dashboard's API key in <b>Options → Dashboard</b> first.</p>`;
+      box.innerHTML = `<p class="note">Add the dashboard's site and API key in <b>Options → Leads dashboard</b> first — leads are saved there.</p>`;
       return;
     }
-    box.innerHTML = r.data.sites.map((x) => `<p class="muted">${esc(siteName(x.site))}: ${x.lastPush ? "last pushed " + esc(new Date(x.lastPush).toLocaleString()) : "never pushed"}</p>`).join("");
+    const last = r.data.last;
+    box.innerHTML = r.data.sites.map((x) => {
+      const rep = last && last.reports.find((y) => y.site === x.site);
+      const state = rep ? (rep.error ? `<span class="err-inline">${esc(rep.error)}</span>` : "✓ connected") : "not used yet";
+      return `<p><b>${esc(siteName(x.site))}</b>: ${state}${x.waiting ? ` · <b>${fmt(x.waiting)}</b> leads waiting in the outbox` : " · nothing waiting"}</p>`;
+    }).join("") + (last ? `<p class="muted">Last sent ${esc(new Date(last.at).toLocaleString())}</p>` : "");
   }
 
-  function siteName(url) {
-    return url.replace(/^https?:\/\//, "").replace(/^www\./, "");
-  }
-
-  async function push(force) {
+  async function push() {
     const box = root.querySelector(".push-report");
     const btn = body.querySelector(".push");
     btn.disabled = true;
-    box.innerHTML = `<p class="muted">Checking which dashboards are reachable…</p>`;
-    const r = await call("push", { force });
+    box.innerHTML = `<p class="muted">Sending…</p>`;
+    const r = await call("push");
     btn.disabled = false;
     if (!r.ok) { box.innerHTML = `<p class="err">${esc(r.error)}</p>`; return; }
-    box.innerHTML = r.data.reports.map((x) => {
-      const name = `<b>${esc(siteName(x.site))}</b>`;
-      if (x.nothing) return `<p class="muted">${name}: nothing new since the last push.${x.duplicates || x.invalid ? ` (${x.duplicates} duplicates, ${x.invalid} incomplete left out)` : ""}</p>`;
-      if (!x.reachable) return `<p class="muted">${name}: ${esc(x.error || "not reachable")} — skipped, will try next time.</p>`;
-      const line = `${fmt(x.added)} new · ${fmt(x.updated)} updated · ${fmt(x.duplicates)} duplicates skipped${x.invalid ? ` · ${fmt(x.invalid)} invalid` : ""}`;
-      const problems = x.problems && x.problems.length
-        ? `<details><summary>${x.problems.length} data problem${x.problems.length === 1 ? "" : "s"}</summary>${x.problems.map((p) => `<div class="muted">• ${esc(p)}</div>`).join("")}</details>` : "";
-      return x.error ? `<p class="err">${name}: ${esc(x.error)}${x.sent ? ` (after ${fmt(x.sent)} sent: ${line})` : ""}</p>`
-        : `<p class="ok-line">✓ ${name}: ${line}</p>${problems}`;
-    }).join("");
+    showPushStatus();
   }
 
   // ------------------------------------------------------------ collector (hunt tab only)
@@ -517,6 +502,7 @@
       .dz { flex-direction: row; align-items: center; gap: 4px; font-weight: 400; }
       .st-replied { background: #ede9fe; color: #6d28d9; } .st-interested { background: #dcfce7; color: #15803d; }
       .st-proposal { background: #ccfbf1; color: #0f766e; } .st-won { background: #16a34a; color: #fff; }
+      .err-inline { color: #b91c1c; }
       .push-report { display: flex; flex-direction: column; gap: 4px; }
       .ok-line { color: #15803d; }
       .empty { text-align: center; padding: 18px 0; display: flex; flex-direction: column; gap: 6px; }`;

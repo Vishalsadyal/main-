@@ -3,8 +3,9 @@ import { notFound } from 'next/navigation';
 import { requireLogin } from '@/lib/dashboard-auth';
 import { getLead, LEAD_STATUSES, type LeadStatus } from '@/lib/leads-db';
 import { getDesign } from '@/lib/demo-library';
-import { competitors, siteUrl, engagement, getSettings, INTENTS, type MessageKind, messagesFor, mostEngaged, nextAction, shortName } from '@/lib/outreach';
-import { archive, changeIntent, changeStatus, nurture, saveNote, saveReply, scheduleLater } from '../../actions';
+import { competitors, senderLabel, senders as getSenders, siteUrl, engagement, getSettings, INTENTS, type MessageKind, meetingTime, messagesFor, mostEngaged, nextAction, shortName } from '@/lib/outreach';
+import { archive, changeIntent, changeStatus, finishMeeting, nurture, saveMeeting, saveNote, saveReply, scheduleLater } from '../../actions';
+import { callScript } from '@/lib/call-script';
 import MessageCard from '../../MessageCard';
 import { ALL_KINDS, cardFor } from '../../card';
 import { StatusBadge } from '../../StatusBadge';
@@ -21,14 +22,17 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const { lead, history } = found;
   const conversation = (await messagesFor([lead.id]))[lead.id] || [];
   const comp = competitors(lead);
-  const [settings, eng] = await Promise.all([getSettings(), engagement([lead.id])]);
+  const [settings, eng, senderList] = await Promise.all([getSettings(), engagement([lead.id]), getSenders()]);
   const e = eng[lead.id];
   const action = nextAction(lead, e, settings);
   const best = mostEngaged(e);
   const firstKind: MessageKind = lead.status === 'new' || lead.status === 'skipped' ? 'first' : action?.kind || 'follow_up';
   const kinds: MessageKind[] = [firstKind, ...(firstKind === 'first' ? [] : ALL_KINDS)];
-  const card = cardFor(lead, settings, kinds, e);
+  const card = cardFor(lead, settings, kinds, e, senderList);
   const self = `/dashboard/leads/${encodeURIComponent(lead.id)}`;
+  const meetingLocal = lead.meeting_at
+    ? new Date(Date.parse(lead.meeting_at) + 5.5 * 3600_000).toISOString().slice(0, 16) : '';
+  const script = callScript(lead, settings);
   const facts: [string, React.ReactNode][] = [
     ['Business type', lead.category_label],
     ['Phone', lead.phone],
@@ -42,6 +46,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     ['Found by', [lead.search, lead.hunt].filter(Boolean).join(' · ')],
     ['Found on', lead.found_at && fmt(lead.found_at)],
     ['Messaged', lead.sent_at && fmt(lead.sent_at)],
+    ['WhatsApp used', lead.sender ? senderLabel(senderList, lead.sender) : null],
     ['Follow-ups sent', lead.follow_up_count ? String(lead.follow_up_count) : null],
     ['Next follow-up', lead.next_action_at && fmt(lead.next_action_at)],
     ['Their last reply', lead.last_reply && `“${lead.last_reply.slice(0, 160)}”${lead.intent && INTENTS[lead.intent] ? ` — ${INTENTS[lead.intent].label}` : ''}`],
@@ -78,7 +83,48 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        <div className="mt-4"><MessageCard id={lead.id} phone={lead.whatsapp} options={card.options} initialKind={firstKind} designs={card.designs} back={self} /></div>
+        <div className="mt-4"><MessageCard id={lead.id} phone={lead.whatsapp} options={card.options} initialKind={firstKind} designs={card.designs} back={self}
+          senders={card.senders} defaultSender={card.defaultSender} /></div>
+
+
+        {/* Call / meeting: book it, then mark how it went */}
+        <div className="mt-5 grid gap-4 border-t border-slate-100 pt-4 lg:grid-cols-2">
+          <form action={saveMeeting} className="flex flex-col gap-2">
+            <input type="hidden" name="id" value={lead.id} />
+            <span className="text-sm font-semibold text-slate-700">📅 Call / meeting {lead.meeting_at && <span className="font-normal text-green-700">— booked for {meetingTime(lead.meeting_at)}</span>}</span>
+            <div className="flex flex-wrap gap-2">
+              <input type="datetime-local" name="at" required defaultValue={meetingLocal} className="rounded-lg border border-slate-300 px-3 py-2.5 text-base" />
+              <input name="link" defaultValue={lead.meeting_link || ''} placeholder="Google Meet link (optional)" className="min-w-56 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base" />
+            </div>
+            <p className="text-xs text-slate-500">India time. The reminder shows up 2 hours before, and “How did the call go?” 15 minutes after it starts. Use <b>Call confirmed</b> / <b>Call reminder</b> above to send the time and link.</p>
+            <button className="self-start rounded-lg bg-slate-800 px-5 py-2.5 font-semibold text-white">{lead.meeting_at ? 'Update call' : 'Book call'}</button>
+          </form>
+          {lead.meeting_at && (
+            <form action={finishMeeting} className="flex flex-col gap-2">
+              <input type="hidden" name="id" value={lead.id} />
+              <span className="text-sm font-semibold text-slate-700">After the call</span>
+              <textarea name="note" rows={2} placeholder="What did you agree? (price, designs, next step…)" className="rounded-lg border border-slate-300 px-3 py-2 text-base" />
+              <div className="flex flex-wrap gap-2">
+                <button className="rounded-lg bg-green-600 px-5 py-2.5 font-semibold text-white">✓ Call done</button>
+                <span className="self-center text-sm text-slate-500">They didn&apos;t join? Send <b>They didn&apos;t join the call</b> above.</span>
+              </div>
+            </form>
+          )}
+        </div>
+
+        <details className="mt-5 rounded-lg bg-amber-50 p-4 ring-1 ring-amber-200" open={Boolean(lead.meeting_at)}>
+          <summary className="cursor-pointer text-sm font-semibold text-amber-900">🎙️ Call script (Hinglish) — {shortName(lead.name)}</summary>
+          <div className="mt-3 flex flex-col gap-4">
+            {script.map((sec) => (
+              <div key={sec.title}>
+                <div className="text-sm font-bold text-slate-800">{sec.title}</div>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {sec.lines.map((line) => <li key={line} className="text-[15px] leading-relaxed text-slate-700">{line}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </details>
 
         {lead.status !== 'new' && (
           <div className="mt-5 grid gap-4 border-t border-slate-100 pt-4 lg:grid-cols-2">
@@ -144,7 +190,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               <div className="mt-3 flex flex-col gap-2">
                 {conversation.length ? conversation.map((m) => (
                   <div key={m.id} className={`max-w-[85%] whitespace-pre-wrap rounded-xl px-3.5 py-2.5 text-sm ${m.dir === 'in' ? 'self-start bg-slate-100' : 'self-end bg-green-100'}`}>
-                    <div className="mb-1 text-xs text-slate-500">{m.dir === 'in' ? 'They replied' : 'You'} · {fmt(m.at)}</div>
+                    <div className="mb-1 text-xs text-slate-500">{m.dir === 'in' ? 'They replied' : `You · ${senderList.find((x) => x.id === (m.sender || 'one'))?.name || 'One'}`} · {fmt(m.at)}</div>
                     {m.text}
                   </div>
                 )) : <p className="whitespace-pre-wrap text-sm">{lead.last_message}</p>}

@@ -7,7 +7,7 @@
 // change (scheduleBackup), and from the "Back up now" button in Settings.
 import { after } from 'next/server';
 import { getDb, LEAD_STATUSES, type Lead, type LeadStatus } from '@/lib/leads-db';
-import { competitors } from '@/lib/outreach';
+import { competitors, senderLabel, senders as getSenders, type Sender } from '@/lib/outreach';
 
 const MARK_LEADS = '_sheet_leads_until';   // updated_at of the last lead backed up
 const MARK_MESSAGES = '_sheet_messages_id'; // id of the last message backed up
@@ -46,7 +46,7 @@ async function post(body: Record<string, unknown>): Promise<{ ok: boolean; error
   }
 }
 
-function row(l: Lead) {
+function row(l: Lead, list: Sender[]) {
   const c = competitors(l);
   const site = (x: { website: string | boolean }) => (typeof x.website === 'string' && x.website ? ` (${x.website})` : x.website ? ' (has website)' : '');
   const comp = [...c.top.map((x) => `#${x.rank} ${x.name}${site(x)}`), ...c.nearby.map((x) => `${x.name} ${x.km} km${site(x)}`)].join('; ');
@@ -57,7 +57,7 @@ function row(l: Lead) {
     demo_link: l.demo_link, hunt: l.hunt, search: l.search, found_at: l.found_at, last_message: l.last_message,
     sent_at: l.sent_at, rating: l.rating, reviews: l.review_count, rating_source: l.rating_source, priority: l.priority,
     last_reply: l.last_reply, notes: l.notes, archived: l.archived ? 'yes' : '', search_rank: l.search_rank,
-    competitors: comp, dashboard_updated_at: l.updated_at,
+    competitors: comp, dashboard_updated_at: l.updated_at, whatsapp_used: l.sender ? senderLabel(list, l.sender) : '',
   };
 }
 
@@ -76,6 +76,7 @@ async function run(full: boolean): Promise<BackupResult> {
   const result: BackupResult = { ok: true, leads: 0, messages: 0, at };
   if (!sheetConfigured()) return { ...result, ok: false, error: 'Google Sheet not set up (SHEETS_API_URL / SHEETS_API_KEY)' };
   const conn = await getDb();
+  const list = await getSenders();
   try {
     // Leads: oldest change first, so a failure part-way resumes from the right place next time.
     let since = full ? '' : (await mark(MARK_LEADS)) || '';
@@ -83,7 +84,7 @@ async function run(full: boolean): Promise<BackupResult> {
       const res = await conn.execute({ sql: 'SELECT * FROM leads WHERE updated_at > ? ORDER BY updated_at LIMIT ?', args: [since, LEAD_BATCH] });
       const leads = res.rows as unknown as Lead[];
       if (!leads.length) break;
-      const r = await post({ action: 'saveHuntLeads', leads: leads.map(row) });
+      const r = await post({ action: 'saveHuntLeads', leads: leads.map((l) => row(l, list)) });
       if (!r.ok) throw new Error(r.error === 'unknown action' ? 'The Sheet script is out of date — deploy the latest sheets/DemoApi.gs' : r.error || 'Sheet error');
       since = leads[leads.length - 1].updated_at;
       await setMark(MARK_LEADS, since);
@@ -102,7 +103,8 @@ async function run(full: boolean): Promise<BackupResult> {
       if (!msgs.length) break;
       const r = await post({ action: 'saveMessages', messages: msgs.map((m) => ({
         id: m.id, lead_id: m.lead_id, business_name: m.business_name, at: m.at,
-        direction: m.dir === 'in' ? 'They replied' : 'You sent', kind: m.kind, text: m.text })) });
+        direction: m.dir === 'in' ? 'They replied' : 'You sent', kind: m.kind, text: m.text,
+        sender: m.dir === 'out' ? senderLabel(list, (m.sender as string | null) || 'one') : '' })) });
       if (!r.ok) throw new Error(r.error === 'unknown action' ? 'The Sheet script is out of date — deploy the latest sheets/DemoApi.gs' : r.error || 'Sheet error');
       lastId = Number(msgs[msgs.length - 1].id);
       await setMark(MARK_MESSAGES, String(lastId));
