@@ -48,6 +48,13 @@ export const DEFAULT_SETTINGS = {
     'So I made you a *free website preview* — with your name, and *call & WhatsApp buttons*:\n{design_links}\n\n' +
     '*Shall I set it up for you?* 🙂 No pressure at all.\n— {my_name}',
 
+  // ---- after a phone call where they said "send it"
+  after_call:
+    'Namaste {dear} 🙏 Thank you for your time on the call!\n\n' +
+    'As discussed, here is the *sample website* for {name}:\n{design_links}\n\n' +
+    '🎥 Our 45-sec video: {video_link}\n\n' +
+    'Have a look — if you like it, we can do a quick *Google Meet*, and your website will be ready in *2 days*. 🙂\n— {my_name}',
+
   // ---- no reply: gentle follow-ups (short — 2–4 lines each)
   followup_1:
     'Hi {name} 🙂 Did you see your *website preview*?\n\n' +
@@ -173,6 +180,7 @@ export type MessageKind = Exclude<SettingKey, 'dailySend' | 'minScore' | 'fu1Day
  *  and the stage the lead moves to once it's sent. */
 export const MESSAGES: Record<MessageKind, { label: string; designs: number; advance: LeadStatus | null }> = {
   first: { label: 'First message', designs: 1, advance: 'waiting_reply' },
+  after_call: { label: 'After the call · send sample', designs: 1, advance: 'interested' },
   followup_1: { label: 'Follow-up 1 · more designs', designs: 3, advance: null },
   followup_2: { label: 'Follow-up 2 · competitors', designs: 1, advance: null },
   followup_final: { label: 'Final follow-up · budget', designs: 1, advance: null },
@@ -264,6 +272,7 @@ export const INTENTS: Record<string, { label: string; kind: MessageKind; action:
   timeline: { label: 'Asked how long', kind: 'timeline', action: 'Send timeline' },
   thinking: { label: 'Thinking / later', kind: 'not_now', action: 'Reply and follow up later' },
   interested: { label: 'Interested', kind: 'more_designs', action: 'Send designs & next steps' },
+  call_yes: { label: 'Said “send it” on the call', kind: 'after_call', action: 'Send the sample (as discussed on the call)' },
   yes: { label: 'Said yes', kind: 'onboarding', action: 'Start onboarding' },
   not_interested: { label: 'Not interested', kind: 'not_interested', action: 'Close politely' },
   other: { label: 'Other', kind: 'more_designs', action: 'Reply' },

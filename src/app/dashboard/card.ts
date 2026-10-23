@@ -16,6 +16,6 @@ export function cardFor(lead: Lead, settings: Settings, kinds: MessageKind[], en
 }
 
 /** Message types offered on a lead page: the recommended one first, then the useful others. */
-export const ALL_KINDS: MessageKind[] = ['followup_1', 'followup_2', 'followup_final', 'more_designs', 'pricing', 'meeting_video',
+export const ALL_KINDS: MessageKind[] = ['after_call', 'followup_1', 'followup_2', 'followup_final', 'more_designs', 'pricing', 'meeting_video',
   'meeting_visit', 'meeting_confirm', 'meeting_reminder', 'meeting_missed', 'correction_thanks', 'call', 'changes',
   'introduction', 'portfolio', 'timeline', 'follow_up', 'not_now', 'onboarding', 'not_interested'];

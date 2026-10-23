@@ -32,6 +32,9 @@ export default async function TodayPage() {
           Pick the design(s), check the message, tap <b>Open WhatsApp</b> (one WhatsApp Web tab, text filled in), press send
           there, then <b>✓ Sent</b> here. Follow-ups come back on <Link href="/dashboard/actions" className="text-blue-700">Action required</Link> by themselves.
         </p>
+        <p className="mt-2 text-sm text-slate-600">
+          📞 Calling first works better for your best leads — <Link href="/dashboard/calls" className="font-semibold text-blue-700">open Calls</Link> (no daily limit, 3 tries each).
+        </p>
       </section>
 
       {leads.length === 0 && (

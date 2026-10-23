@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // `npm run dev` only: let a phone/iPad on the same Wi-Fi open the dashboard (e.g. http://10.93.43.145:3000)
+  // with its buttons working. The PC's address changes, so allow the usual home-network ranges.
+  allowedDevOrigins: ['10.*.*.*', '192.168.*.*', '172.*.*.*', '10.93.43.145'],
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],

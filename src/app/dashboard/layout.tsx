@@ -21,7 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </Link>
           {loggedIn && (
             <nav className="flex flex-1 items-center gap-1 overflow-x-auto text-sm font-semibold">
-              {[['/dashboard/actions', '🔥 Actions'], ['/dashboard/today', 'Today'], ['/dashboard/replied', 'Replied'], ['/dashboard', 'Leads'], ['/dashboard/demos', 'Demos'], ['/dashboard/settings', 'Settings']].map(([href, label]) => (
+              {[['/dashboard/actions', '🔥 Actions'], ['/dashboard/calls', '📞 Calls'], ['/dashboard/today', 'Today'],['/dashboard/replied', 'Replied'], ['/dashboard', 'Leads'], ['/dashboard/demos', 'Demos'], ['/dashboard/settings', 'Settings']].map(([href, label]) => (
                 <Link key={href} href={href} className="rounded-md px-3.5 py-2 text-slate-300 hover:bg-slate-800 hover:text-white">{label}</Link>
               ))}
             </nav>

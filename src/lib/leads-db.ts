@@ -72,6 +72,10 @@ export type Lead = {
   meeting_at: string | null;     // scheduled call / meeting (UTC ISO)
   meeting_link: string | null;   // Google Meet / Zoom link
   meeting_reminded: number | null;
+  call_count: number | null;     // calls that weren't answered (3 → dropped)
+  last_call_at: string | null;
+  next_call_at: string | null;   // retry / call-back time
+  call_result: string | null;    // last call outcome (see CALL_OUTCOMES)
   created_at: string;
   updated_at: string;
 };
@@ -136,6 +140,20 @@ const SCHEMA = [
    BEGIN SELECT RAISE(ABORT, 'Messages cannot be deleted.'); END`,
   `CREATE TRIGGER IF NOT EXISTS messages_no_update BEFORE UPDATE ON lead_messages
    BEGIN SELECT RAISE(ABORT, 'Messages cannot be changed.'); END`,
+  // Phone calls: every attempt and what they said. Append-only, like the messages.
+  `CREATE TABLE IF NOT EXISTS lead_calls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_id TEXT NOT NULL,
+    at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    outcome TEXT NOT NULL,
+    note TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS lead_calls_lead ON lead_calls(lead_id, id)`,
+  `CREATE INDEX IF NOT EXISTS lead_calls_at ON lead_calls(at)`,
+  `CREATE TRIGGER IF NOT EXISTS calls_no_delete BEFORE DELETE ON lead_calls
+   BEGIN SELECT RAISE(ABORT, 'Calls cannot be deleted.'); END`,
+  `CREATE TRIGGER IF NOT EXISTS calls_no_update BEFORE UPDATE ON lead_calls
+   BEGIN SELECT RAISE(ABORT, 'Calls cannot be changed.'); END`,
   // Dashboard settings (price, daily limit, message texts…), changed from the Settings page.
   `CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
@@ -211,7 +229,8 @@ async function migrate(conn: Client): Promise<void> {
   for (const [col, type] of [['phone_key', 'TEXT'], ['name_key', 'TEXT'], ['search_rank', 'INTEGER'],
                              ['competitors', 'TEXT'], ['last_reply', 'TEXT'], ['last_reply_at', 'TEXT'], ['follow_up_count', 'INTEGER'],
                              ['last_contacted_at', 'TEXT'], ['next_action_at', 'TEXT'], ['intent', 'TEXT'], ['demos_sent', 'TEXT'], ['closing', 'INTEGER'], ['sender', 'TEXT'],
-                             ['meeting_at', 'TEXT'], ['meeting_link', 'TEXT'], ['meeting_reminded', 'INTEGER']]) {
+                             ['meeting_at', 'TEXT'], ['meeting_link', 'TEXT'], ['meeting_reminded', 'INTEGER'],
+                             ['call_count', 'INTEGER'], ['last_call_at', 'TEXT'], ['next_call_at', 'TEXT'], ['call_result', 'TEXT']]) {
     if (!cols.has(col)) await conn.execute(`ALTER TABLE leads ADD COLUMN ${col} ${type}`);
   }
   const msgCols = new Set((await conn.execute('PRAGMA table_info(lead_messages)')).rows.map((r) => String(r.name)));

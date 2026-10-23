@@ -187,3 +187,21 @@ export async function finishMeeting(form: FormData): Promise<void> {
   scheduleBackup();
   refresh(id);
 }
+
+// ------------------------------------------------------------------ phone calls
+
+export async function saveCall(form: FormData): Promise<void> {
+  await requireLogin();
+  const { CALL_OUTCOMES, recordCall } = await import('@/lib/calls');
+  const id = leadId(form);
+  const outcome = String(form.get('outcome') || '') as keyof typeof CALL_OUTCOMES;
+  if (!(outcome in CALL_OUTCOMES)) return; // no button chosen — nothing to record
+  const later = Math.min(30, Math.max(0, parseInt(String(form.get('later') || '1'), 10) || 0));
+  await recordCall(id, outcome, String(form.get('note') || ''), later);
+  scheduleBackup();
+  refresh(id);
+  // A yes goes straight to the lead, where the "as discussed" WhatsApp message is ready to send.
+  if (outcome === 'yes' || outcome === 'meeting') redirect(`/dashboard/leads/${encodeURIComponent(id)}#next`);
+  const back = String(form.get('back') || '');
+  if (back.startsWith('/dashboard')) redirect(back);
+}

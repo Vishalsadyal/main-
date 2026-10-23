@@ -4,9 +4,11 @@ import { requireLogin } from '@/lib/dashboard-auth';
 import { getLead, LEAD_STATUSES, type LeadStatus } from '@/lib/leads-db';
 import { getDesign } from '@/lib/demo-library';
 import { competitors, senderLabel, senders as getSenders, siteUrl, engagement, getSettings, INTENTS, type MessageKind, meetingTime, messagesFor, mostEngaged, nextAction, shortName } from '@/lib/outreach';
-import { archive, changeIntent, changeStatus, finishMeeting, nurture, saveMeeting, saveNote, saveReply, scheduleLater } from '../../actions';
-import { callScript } from '@/lib/call-script';
+import { archive, changeIntent, changeStatus, finishMeeting, nurture, saveCall, saveMeeting, saveNote, saveReply, scheduleLater } from '../../actions';
+import { CALL_OUTCOMES, callsFor, MAX_TRIES, type CallOutcome } from '@/lib/calls';
+import { callScript, coldCallScript } from '@/lib/call-script';
 import MessageCard from '../../MessageCard';
+import CallButtons from '../../CallButtons';
 import { ALL_KINDS, cardFor } from '../../card';
 import { StatusBadge } from '../../StatusBadge';
 
@@ -22,7 +24,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const { lead, history } = found;
   const conversation = (await messagesFor([lead.id]))[lead.id] || [];
   const comp = competitors(lead);
-  const [settings, eng, senderList] = await Promise.all([getSettings(), engagement([lead.id]), getSenders()]);
+  const [settings, eng, senderList, calls] = await Promise.all([getSettings(), engagement([lead.id]), getSenders(), callsFor(lead.id)]);
   const e = eng[lead.id];
   const action = nextAction(lead, e, settings);
   const best = mostEngaged(e);
@@ -32,7 +34,9 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const self = `/dashboard/leads/${encodeURIComponent(lead.id)}`;
   const meetingLocal = lead.meeting_at
     ? new Date(Date.parse(lead.meeting_at) + 5.5 * 3600_000).toISOString().slice(0, 16) : '';
-  const script = callScript(lead, settings);
+  // Before they've talked to you: the first-call pitch. After: the video-call script.
+  const pitch = ['new', 'queued', 'waiting_reply', 'nurture', 'no_reply', 'skipped'].includes(lead.status) && !lead.meeting_at;
+  const script = pitch ? coldCallScript(lead, settings) : callScript(lead, settings);
   const facts: [string, React.ReactNode][] = [
     ['Business type', lead.category_label],
     ['Phone', lead.phone],
@@ -113,7 +117,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         </div>
 
         <details className="mt-5 rounded-lg bg-amber-50 p-4 ring-1 ring-amber-200" open={Boolean(lead.meeting_at)}>
-          <summary className="cursor-pointer text-sm font-semibold text-amber-900">🎙️ Call script (Hinglish) — {shortName(lead.name)}</summary>
+          <summary className="cursor-pointer text-sm font-semibold text-amber-900">🎙️ {pitch ? 'Your pitch (first call)' : 'Call script (Hinglish)'} — {shortName(lead.name)}</summary>
           <div className="mt-3 flex flex-col gap-4">
             {script.map((sec) => (
               <div key={sec.title}>
@@ -182,6 +186,27 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               {lead.demo_link && <a href={lead.demo_link} target="_blank" rel="noopener" className={`${btn} ring-slate-300`}>Their website preview ↗</a>}
               {lead.maps_url && <a href={lead.maps_url} target="_blank" rel="noopener" className={`${btn} ring-slate-300`}>Map ↗</a>}
             </div>
+          </section>
+
+          <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <h2 className="text-sm font-semibold text-slate-500">📞 Phone calls{lead.call_count ? ` · ${lead.call_count} of ${MAX_TRIES} unanswered` : ''}{lead.next_call_at && isFuture(lead.next_call_at) ? ` · call back ${fmt(lead.next_call_at)}` : ''}</h2>
+            {calls.length > 0 && (
+              <ol className="mt-2 flex flex-col gap-2">
+                {calls.map((c) => (
+                  <li key={c.id} className="text-sm">
+                    <span className="font-medium">{CALL_OUTCOMES[c.outcome as CallOutcome]?.label || c.outcome}</span>
+                    <span className="text-slate-500"> · {fmt(c.at)}</span>
+                    {c.note && <div className="text-slate-700">“{c.note}”</div>}
+                  </li>
+                ))}
+              </ol>
+            )}
+            <form action={saveCall} className="mt-3 flex flex-col gap-2">
+              <input type="hidden" name="id" value={lead.id} />
+              <input type="hidden" name="back" value={self} />
+              <textarea name="note" rows={2} maxLength={2000} placeholder="What did they say on the call?" className="rounded-lg border border-slate-300 px-3 py-2 text-base" />
+              <CallButtons />
+            </form>
           </section>
 
           {(conversation.length > 0 || lead.last_message) && (
@@ -287,9 +312,13 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 }
 
 function label(action: string) {
-  return ({ created: 'Saved', status: 'Status changed', notes: 'Note added', archived: 'Archived', unarchived: 'Unarchived', sync: 'Synced' } as Record<string, string>)[action] || action;
+  return ({ created: 'Saved', status: 'Status changed', notes: 'Note added', call: '📞 Call', archived: 'Archived', unarchived: 'Unarchived', sync: 'Synced' } as Record<string, string>)[action] || action;
 }
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function isFuture(iso: string) {
+  return Date.parse(iso) > Date.now();
 }
