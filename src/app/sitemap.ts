@@ -66,5 +66,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     });
   });
 
+  // Our own Android apps: landing page and the privacy policy Google Play links to.
+  ['/apps/ultra-gfx-tool-pro', '/apps/ultra-gfx-tool-pro/privacy-policy'].forEach((path) => {
+    routes.push({
+      url: `${baseUrl}${path}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    });
+  });
+
   return routes;
 }
